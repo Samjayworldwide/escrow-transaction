@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package orderService;
+
+option java_multiple_files = true;
+
+option java_package = "com.samjay";
+
+option java_outer_classname = "orderServiceProto";
+
+service OrderService {
+
+  rpc FetchOrderDetails(FetchOrderDetailsRequest) returns (FetchOrderDetailsResponse);
+
+}
+
+message FetchOrderDetailsRequest {
+
+  string orderId = 1;
+
+  string userId = 2;
+
+}
+
+message FetchOrderDetailsResponse {
+
+  bool isFound = 1;
+
+  bool isApproved = 2;
+
+  bool isPaidByBuyer = 3;
+
+  double totalPriceOfItems = 4;
+
+  string orderRefrenceNumber = 5;
+
+}

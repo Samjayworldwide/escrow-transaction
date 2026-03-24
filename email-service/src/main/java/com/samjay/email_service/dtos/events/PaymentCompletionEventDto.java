@@ -1,0 +1,16 @@
+package com.samjay.email_service.dtos.events;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+public record PaymentCompletionEventDto(
+        String buyerEmail,
+        String sellerEmail,
+        UUID buyerUserId,
+        UUID sellerUserId,
+        String orderReferenceNumber,
+        BigDecimal amount,
+        UUID paymentId,
+        UUID orderId,
+        String clientRequestKey) {
+}

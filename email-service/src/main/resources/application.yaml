@@ -1,0 +1,177 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: email-service
+  config:
+    import: optional:/Users/mac/escrow_project/email-service/.env[.properties]
+  threads:
+    virtual:
+      enabled: true
+  mail:
+    host: smtp.mail.yahoo.com
+    port: 465
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+            socketFactory:
+              class: javax.net.ssl.SSLSocketFactory
+  cloud:
+    function:
+      definition: sendEmailVerificationMail;sendEmailVerificationMailDlq;sendOrderCreationMail;sendOrderCreationMailDlq;sendBuyerOrderApprovalMail;sendBuyerOrderApprovalMailDlq;sendSellerOrderApprovalMail;sendSellerOrderApprovalMailDlq;sendPaymentInitializationMail;sendPaymentInitializationMailDlq;sendBuyerPaymentCompletionMail;sendBuyerPaymentCompletionMailDlq;sendSellerPaymentCompletionMail;sendSellerPaymentCompletionMailDlq
+    stream:
+      bindings:
+        sendEmailVerificationMail-in-0:
+          destination: send-email-verification
+          group: ${spring.application.name}
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendOrderCreationMail-in-0:
+          destination: order-created
+          group: ${spring.application.name}
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendBuyerOrderApprovalMail-in-0:
+          destination: order-approved
+          group: ${spring.application.name}-buyer-approval
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendSellerOrderApprovalMail-in-0:
+          destination: order-approved
+          group: ${spring.application.name}-seller-approval
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendPaymentInitializationMail-in-0:
+          destination: payment-initialized
+          group: ${spring.application.name}
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendBuyerPaymentCompletionMail-in-0:
+          destination: payment-completed
+          group: ${spring.application.name}-buyer-payment-completion
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendSellerPaymentCompletionMail-in-0:
+          destination: payment-completed
+          group: ${spring.application.name}-seller-payment-completion
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+
+        sendEmailVerificationMailDlq-in-0:
+          destination: send-email-verification.DLQ
+          group: ${spring.application.name}-send-email-verification-dlq
+        sendOrderCreationMailDlq-in-0:
+          destination: order-created.DLQ
+          group: ${spring.application.name}-order-dlq
+        sendBuyerOrderApprovalMailDlq-in-0:
+          destination: order-approved.DLQ
+          group: ${spring.application.name}-buyer-approval-dlq
+        sendSellerOrderApprovalMailDlq-in-0:
+          destination: order-approved.DLQ
+          group: ${spring.application.name}-seller-approval-dlq
+        sendPaymentInitializationMailDlq-in-0:
+          destination: payment-initialized.DLQ
+          group: ${spring.application.name}-payment-dlq
+        sendBuyerPaymentCompletionMailDlq-in-0:
+          destination: buyer-payment-completed.DLQ
+          group: ${spring.application.name}-buyer-payment-completion-dlq
+        sendSellerPaymentCompletionMailDlq-in-0:
+          destination: seller-payment-completed.DLQ
+          group: ${spring.application.name}-seller-payment-completion-dlq
+      kafka:
+        binder:
+          brokers:
+            - localhost:9092
+        bindings:
+          sendEmailVerificationMail-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: send-email-verification.DLQ
+          sendOrderCreationMail-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: order-created.DLQ
+          sendBuyerOrderApprovalMail-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: order-approved.DLQ
+          sendSellerOrderApprovalMail-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: order-approved.DLQ
+          sendPaymentInitializationMail-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: payment-initialized.DLQ
+          sendBuyerPaymentCompletionMail-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: buyer-payment-completed.DLQ
+          sendSellerPaymentCompletionMail-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: seller-payment-completed.DLQ
+
+email:
+  username: ${EMAIL_USERNAME}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+  health:
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    root: INFO
+    com.samjay: TRACE
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetchRegistry: true
+    registerWithEureka: true
+    serviceUrl:
+      defaultZone: http://localhost:8082/eureka/

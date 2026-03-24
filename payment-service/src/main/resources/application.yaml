@@ -1,0 +1,154 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: payment-service
+  config:
+    import: optional:/Users/mac/escrow_project/payment-service/.env[.properties]
+  threads:
+    virtual:
+      enabled: true
+  grpc:
+    client:
+      channels:
+        order-service:
+          address: "localhost:9091"
+          negotiation-type: plaintext
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080
+          jwk-set-uri: http://localhost:8080/oauth2/jwks
+
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers:
+            - localhost:9092
+          producer-properties:
+            retries: 3
+            retry.backoff.ms: 1000
+            acks: all
+            enable.idempotence: true
+            max.in.flight.requests.per.connection: 5
+            delivery.timeout.ms: 30000
+            request.timeout.ms: 10000
+      bindings:
+        paymentInitialization-out-0:
+          destination: payment-initialized
+          producer:
+            error-channel-enabled: true
+        paymentVerification-out-0:
+          destination: payment-verified
+          producer:
+            error-channel-enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+  health:
+    outbox:
+      enabled: true
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    root: INFO
+    com.samjay: TRACE
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetchRegistry: true
+    registerWithEureka: true
+    serviceUrl:
+      defaultZone: http://localhost:8082/eureka/
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 2
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        slow-call-duration-threshold: 2s
+        slow-call-rate-threshold: 50
+
+    instances:
+      interServiceCircuit:
+        base-config: default
+
+  retry:
+    configs:
+      default:
+        max-attempts: 2
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - io.grpc.StatusRuntimeException
+
+    instances:
+      interServiceRetry:
+        base-config: default
+
+  bulkhead:
+    configs:
+      default:
+        max-concurrent-calls: 20
+        max-wait-duration: 0
+
+    instances:
+      interServiceBulkhead:
+        base-config: default
+
+app:
+  callback-url: http://localhost:8083/escrow/payment-service/api/payment/callback
+
+paystack:
+  base-url: https://api.paystack.co
+  secret-key: ${PAYSTACK_SECRET_KEY}
+
+outbox:
+  poll:
+    pending-interval-ms: 5000
+    retry-interval-ms: 60000
+    cleanup-interval-ms: 3600000
+    batch-size: 50
+    backoff-multiplier-seconds: 30
+    cleanup-retention-hours: 24

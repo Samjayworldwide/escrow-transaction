@@ -1,0 +1,98 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: authentication-service
+  config:
+    import: optional:/Users/mac/escrow_project/authentication-service/.env[.properties]
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers:
+            - localhost:9092
+          producer-properties:
+            retries: 3
+            retry.backoff.ms: 1000
+            acks: all
+            enable.idempotence: true
+            max.in.flight.requests.per.connection: 5
+            delivery.timeout.ms: 30000
+            request.timeout.ms: 10000
+      bindings:
+        sendVerificationCode-out-0:
+          destination: send-email-verification
+          producer:
+            error-channel-enabled: true
+        userRegistered-out-0:
+          destination: user-registered
+          producer:
+            error-channel-enabled: true
+
+outbox:
+  poll:
+    pending-interval-ms: 5000
+    retry-interval-ms: 60000
+    cleanup-interval-ms: 3600000
+    batch-size: 50
+    backoff-multiplier-seconds: 30
+    cleanup-retention-hours: 24
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+  health:
+    outbox:
+      enabled: true
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+jwt:
+  issuer: "http://localhost:8080"
+  expiry: 3600
+
+logging:
+  level:
+    root: INFO
+    com.samjay: TRACE
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetchRegistry: true
+    registerWithEureka: true
+    serviceUrl:
+      defaultZone: http://localhost:8082/eureka/
