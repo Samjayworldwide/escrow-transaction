@@ -20,12 +20,27 @@ public class AppExtensions {
 
     public static final String USERNAME_CLAIM_KEY = "username";
 
+    public static final String DRIVER_LOCATION_PREFIX = "driver:location:";
+
+    public static final String H3_CELL_PREFIX = "h3:cell:";
+
+    public static final int DRIVER_TTL_SECONDS = 300;
+
+    public static final int H3_RESOLUTION = 8;
+
+    public static final int MAX_RINGS = 10;
+
+    public static final double KM_PER_RING_RES_8 = 1.2;
+
+    public static final String BEARER_PREFIX = "Bearer ";
+
+    public static final String AUTH_ATTRIBUTE = "AUTHENTICATED_USER";
+
     private static final List<String> TRACKED_FIELDS = Arrays.asList(
             "phoneNumber",
             "profilePictureUrl",
             "licensePlateNumber",
-            "identifiationNumber"
-
+            "identificationNumber"
     );
 
     private static final List<DocumentType> REQUIRED_DOCUMENTS = List.of(

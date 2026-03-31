@@ -1,10 +1,10 @@
 package com.samjay.order_service.services.interfaces;
 
+import com.samjay.order_service.dtos.events.PaymentVerificationEventDto;
 import com.samjay.order_service.dtos.requests.OrderApprovalRequest;
 import com.samjay.order_service.dtos.requests.OrderCreationRequest;
 import com.samjay.order_service.dtos.responses.ApiResponse;
 import com.samjay.order_service.dtos.responses.OrderCreationResponse;
-import com.samjay.order_service.dtos.responses.OrderDetailsDto;
 import com.samjay.order_service.dtos.responses.UnapprovedOrderResponse;
 
 import java.util.List;
@@ -20,5 +20,5 @@ public interface OrderService {
 
     ApiResponse<String> rejectOrder(UUID orderId, String clientRequestKey);
 
-    OrderDetailsDto updateOrderStatusToPaid(UUID orderId);
+    void updateOrderStatusToPaid(PaymentVerificationEventDto paymentVerificationEventDto);
 }

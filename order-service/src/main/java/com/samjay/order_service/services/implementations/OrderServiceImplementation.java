@@ -3,12 +3,15 @@ package com.samjay.order_service.services.implementations;
 import com.samjay.ValidateAndFetchCustomerUsernameResponse;
 import com.samjay.order_service.configurations.AuthenticatedUserProvider;
 import com.samjay.order_service.dtos.events.OrderApprovalEventDto;
+import com.samjay.order_service.dtos.events.PaymentCompletionEventDto;
+import com.samjay.order_service.dtos.events.PaymentVerificationEventDto;
 import com.samjay.order_service.dtos.requests.ItemDetailsRequest;
 import com.samjay.order_service.dtos.requests.OrderApprovalRequest;
 import com.samjay.order_service.dtos.requests.OrderCreationRequest;
 import com.samjay.order_service.dtos.responses.*;
 import com.samjay.order_service.entities.ItemDetails;
 import com.samjay.order_service.entities.Order;
+import com.samjay.order_service.entities.OrderDeliveryInformation;
 import com.samjay.order_service.entities.OrderParticipantInformation;
 import com.samjay.order_service.enumerations.OrderCreator;
 import com.samjay.order_service.enumerations.OrderStatus;
@@ -53,6 +56,8 @@ public class OrderServiceImplementation implements OrderService {
     private final CacheService cacheService;
 
     private final OutboxEventService outboxEventService;
+
+    private final GoogleMapService googleMapService;
 
     @Transactional
     @Override
@@ -200,7 +205,24 @@ public class OrderServiceImplementation implements OrderService {
 
         OrderParticipantInformation participantInformation = order.getParticipantInformation();
 
+        OrderDeliveryInformation deliveryInformation = order.getDeliveryInformation();
+
         OrderApprovalEventDto orderApprovalEventDto;
+
+        ApiResponse<LatitudeAndLongitudeResponse> latitudeAndLongitudeResponseApiResponse = googleMapService
+                .getLatitudeAndLongitudeFromAddress(orderApprovalRequest.getAddress());
+
+        if (!latitudeAndLongitudeResponseApiResponse.isSuccessful())
+            return ApiResponse.error("Failed to fetch geo-coordinates for the provided address. Please ensure the address is valid and try again.");
+
+        ApiResponse<DistanceAndDurationResponse> distanceAndDurationResponseApiResponse = googleMapService
+                .getDurationAndDistanceBetweenAddresses(
+                        orderCreator == OrderCreator.BUYER ? participantInformation.getDropOffAddress() : participantInformation.getPickupAddress(),
+                        orderApprovalRequest.getAddress()
+                );
+
+        if (!distanceAndDurationResponseApiResponse.isSuccessful())
+            return ApiResponse.error("Failed to fetch distance and duration for the provided addresses. Please ensure the addresses are valid and try again.");
 
         switch (orderCreator) {
 
@@ -217,6 +239,10 @@ public class OrderServiceImplementation implements OrderService {
                 participantInformation.setSellerEmail(userIdentifier.email());
 
                 participantInformation.setSellerPhoneNumber(orderApprovalRequest.getPhoneNumber());
+
+                deliveryInformation.setPickupAddressLatitude(latitudeAndLongitudeResponseApiResponse.getResponseBody().latitude());
+
+                deliveryInformation.setPickupAddressLongitude(latitudeAndLongitudeResponseApiResponse.getResponseBody().longitude());
 
                 orderApprovalEventDto = new OrderApprovalEventDto(
                         participantInformation.getBuyerEmail(),
@@ -241,6 +267,10 @@ public class OrderServiceImplementation implements OrderService {
 
                 participantInformation.setBuyerPhoneNumber(orderApprovalRequest.getPhoneNumber());
 
+                deliveryInformation.setDropOffAddressLatitude(latitudeAndLongitudeResponseApiResponse.getResponseBody().latitude());
+
+                deliveryInformation.setDropOffAddressLongitude(latitudeAndLongitudeResponseApiResponse.getResponseBody().longitude());
+
                 orderApprovalEventDto = new OrderApprovalEventDto(
                         userIdentifier.email(),
                         participantInformation.getSellerEmail(),
@@ -255,6 +285,12 @@ public class OrderServiceImplementation implements OrderService {
                 return ApiResponse.error("Invalid order creator type. The order creator must be either BUYER or SELLER.");
             }
         }
+
+        deliveryInformation.setDistanceInKm(distanceAndDurationResponseApiResponse.getResponseBody().distance());
+
+        deliveryInformation.setEstimatedDeliveryTime(distanceAndDurationResponseApiResponse.getResponseBody().duration());
+
+        deliveryInformation.setDeliveryFee(100 * distanceAndDurationResponseApiResponse.getResponseBody().distance());
 
         order.setOrderStatus(OrderStatus.APPROVED);
 
@@ -282,13 +318,23 @@ public class OrderServiceImplementation implements OrderService {
 
     @Transactional
     @Override
-    public OrderDetailsDto updateOrderStatusToPaid(UUID orderId) {
+    public void updateOrderStatusToPaid(PaymentVerificationEventDto paymentVerificationEventDto) {
 
         try {
 
             Order order = orderRepository
-                    .findByIdWithDetails(orderId)
-                    .orElseThrow(() -> new ApplicationException("Order not found for ID: " + orderId, HttpStatus.BAD_REQUEST));
+                    .findByIdWithDetails(paymentVerificationEventDto.orderId())
+                    .orElseThrow(() -> new ApplicationException(
+                            "Order not found for ID: " + paymentVerificationEventDto.orderId(),
+                            HttpStatus.BAD_REQUEST)
+                    );
+
+            if (order.getPaymentStatus() == PaymentStatus.PAID) {
+
+                log.warn("Order with ID {} is already marked as PAID. Skipping update.", order.getId());
+
+                return;
+            }
 
             order.setPaymentStatus(PaymentStatus.PAID);
 
@@ -296,18 +342,34 @@ public class OrderServiceImplementation implements OrderService {
 
             Order savedOrder = orderRepository.save(order);
 
-            return OrderDetailsDto
-                    .builder()
-                    .orderReferenceNumber(savedOrder.getOrderReferenceNumber())
-                    .buyerEmail(savedOrder.getParticipantInformation().getBuyerEmail())
-                    .buyerUserId(savedOrder.getParticipantInformation().getBuyerUserId())
-                    .sellerEmail(savedOrder.getParticipantInformation().getSellerEmail())
-                    .sellerUserId(savedOrder.getParticipantInformation().getSellerUserId())
-                    .build();
+            PaymentCompletionEventDto paymentCompletionEventDto = new PaymentCompletionEventDto(
+                    savedOrder.getParticipantInformation().getBuyerEmail(),
+                    savedOrder.getParticipantInformation().getSellerEmail(),
+                    UUID.fromString(savedOrder.getParticipantInformation().getBuyerUserId()),
+                    UUID.fromString(savedOrder.getParticipantInformation().getSellerUserId()),
+                    savedOrder.getDeliveryInformation().getPickupAddressLatitude(),
+                    savedOrder.getDeliveryInformation().getPickupAddressLongitude(),
+                    savedOrder.getDeliveryInformation().getDeliveryFee(),
+                    savedOrder.getParticipantInformation().getPickupAddress() + ", " + savedOrder.getParticipantInformation().getPickupState(),
+                    savedOrder.getParticipantInformation().getDropOffAddress() + ", " + savedOrder.getParticipantInformation().getDropOffState(),
+                    savedOrder.getOrderReferenceNumber(),
+                    paymentVerificationEventDto.amount(),
+                    paymentVerificationEventDto.paymentId(),
+                    paymentVerificationEventDto.orderId(),
+                    paymentVerificationEventDto.clientRequestKey()
+            );
+
+            outboxEventService.saveEvent(
+                    savedOrder.getParticipantInformation().getBuyerUserId(),
+                    PAYMENT_COMPLETION_EVENT_TYPE,
+                    PAYMENT_COMPLETION_KAFKA_BINDING,
+                    paymentCompletionEventDto,
+                    paymentVerificationEventDto.clientRequestKey()
+            );
 
         } catch (Exception e) {
 
-            log.error("Error updating order status to paid for order ID {}: {}", orderId, e.getMessage(), e);
+            log.error("Error updating order status to paid for order ID {}: {}", paymentVerificationEventDto.orderId(), e.getMessage(), e);
 
             throw e;
         }
@@ -378,7 +440,8 @@ public class OrderServiceImplementation implements OrderService {
 
         OrderParticipantInformation orderParticipantInformation = order.getParticipantInformation();
 
-        String username = order.getOrderCreator() == OrderCreator.BUYER ? orderParticipantInformation.getBuyerUsername() : orderParticipantInformation.getSellerUsername();
+        String username = order.getOrderCreator() == OrderCreator.BUYER ? orderParticipantInformation.getBuyerUsername()
+                : orderParticipantInformation.getSellerUsername();
 
         UnapprovedOrderResponse response = new UnapprovedOrderResponse();
 

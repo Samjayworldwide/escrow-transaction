@@ -76,6 +76,31 @@ public class GatewayServerApplication {
                         )
                         .uri("lb://PAYMENT-SERVICE")
                 )
+
+                .route(p -> p
+                        .path("/escrow/driver-service/**")
+                        .filters(f -> f.rewritePath("/escrow/driver-service/(?<segment>.*)", "/${segment}")
+                                .addResponseHeader("x-Response-Time", LocalDateTime.now().toString())
+                                .preserveHostHeader()
+                                .circuitBreaker(config -> config.setName("driverServiceCircuitBreaker").setFallbackUri("forward:/contactSupport"))
+                                .retry(retryConfig -> retryConfig.setRetries(3).setMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE, HttpMethod.PUT)
+                                        .setBackoff(Duration.ofMillis(100), Duration.ofMillis(1000), 2, true)
+                                )
+                                .requestRateLimiter(config -> config.setRateLimiter(redisRateLimiter())
+                                        .setKeyResolver(userKeyResolver()))
+
+                        )
+                        .uri("lb://DRIVER-SERVICE")
+                )
+
+                .route(p -> p
+                        .path("/escrow/driver-service/ws/**")
+                        .filters(f -> f.rewritePath("/escrow/driver-service/ws/(?<segment>.*)", "/ws/${segment}")
+                                .addResponseHeader("x-Response-Time", LocalDateTime.now().toString())
+                                .preserveHostHeader()
+                        )
+                        .uri("lb:ws://DRIVER-SERVICE")
+                )
                 .build();
     }
 

@@ -1,14 +1,13 @@
 package com.samjay.wallet_service.services.implementations;
 
+import com.samjay.wallet_service.dtos.events.DriverSearchEventDto;
+import com.samjay.wallet_service.dtos.events.PaymentCompletionEventDto;
 import com.samjay.wallet_service.entities.Wallet;
 import com.samjay.wallet_service.enumerations.LedgerEntryType;
 import com.samjay.wallet_service.enumerations.ReferenceType;
 import com.samjay.wallet_service.exceptions.ApplicationException;
 import com.samjay.wallet_service.repositories.WalletRepository;
-import com.samjay.wallet_service.services.interfaces.EscrowTransactionService;
-import com.samjay.wallet_service.services.interfaces.IdempotencyService;
-import com.samjay.wallet_service.services.interfaces.WalletLedgerService;
-import com.samjay.wallet_service.services.interfaces.WalletService;
+import com.samjay.wallet_service.services.interfaces.*;
 import com.samjay.wallet_service.utility.AppExtensions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+
+import static com.samjay.wallet_service.utility.AppExtensions.DRIVER_SEARCH_EVENT_TYPE;
+import static com.samjay.wallet_service.utility.AppExtensions.DRIVER_SEARCH_KAFKA_BINDING;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +33,8 @@ public class WalletServiceImplementation implements WalletService {
     private final IdempotencyService idempotencyService;
 
     private final EscrowTransactionService escrowTransactionService;
+
+    private final OutboxEventService outboxEventService;
 
     @Transactional
     @Override
@@ -75,95 +79,117 @@ public class WalletServiceImplementation implements WalletService {
 
     @Transactional
     @Override
-    public void creditWallet(String clientRequestKey, UUID buyerUserId, UUID sellerUserId, BigDecimal amount, UUID paymentId, UUID orderId) {
+    public void creditWallet(PaymentCompletionEventDto paymentCompletionEventDto) {
 
         try {
 
-            String fingerprintKey = clientRequestKey + ":" + buyerUserId + ":" + sellerUserId + ":" + amount + ":" + paymentId + ":" + orderId;
+            String fingerprintKey = paymentCompletionEventDto.clientRequestKey() + ":"
+                    + paymentCompletionEventDto.buyerUserId() + ":" + paymentCompletionEventDto.sellerUserId() + ":"
+                    + paymentCompletionEventDto.amount() + ":" + paymentCompletionEventDto.paymentId() + ":"
+                    + paymentCompletionEventDto.orderId();
 
             log.info("Generated fingerprint key for idempotency: {}", fingerprintKey);
 
             String requestFingerPrint = AppExtensions.generateHash(fingerprintKey);
 
-            boolean requestExists = idempotencyService.recordExists(clientRequestKey,
+            boolean requestExists = idempotencyService.recordExists(paymentCompletionEventDto.clientRequestKey(),
                     AppExtensions.CREDIT_WALLET_EVENT_TYPE,
                     requestFingerPrint
             );
 
             if (requestExists) {
 
-                log.warn("Duplicate request detected for client request key: {}", clientRequestKey);
+                log.warn("Duplicate request detected for client request key: {}", paymentCompletionEventDto.clientRequestKey());
 
                 return;
             }
 
             Wallet buyerWallet = walletRepository
-                    .findByUserId(buyerUserId)
+                    .findByUserId(paymentCompletionEventDto.buyerUserId())
                     .orElseThrow(() -> new ApplicationException(
-                            "Wallet not found for user with user ID: " + buyerUserId,
+                            "Wallet not found for user with user ID: " + paymentCompletionEventDto.buyerUserId(),
                             HttpStatus.BAD_REQUEST)
                     );
 
             Wallet sellerWallet = walletRepository
-                    .findByUserId(sellerUserId)
+                    .findByUserId(paymentCompletionEventDto.sellerUserId())
                     .orElseThrow(() -> new ApplicationException(
-                            "Wallet not found for user with user ID: " + sellerUserId,
+                            "Wallet not found for user with user ID: " + paymentCompletionEventDto.sellerUserId(),
                             HttpStatus.BAD_REQUEST)
                     );
 
             BigDecimal buyerAvailableBalanceBeforeCredit = buyerWallet.getAvailableBalance();
 
-            buyerWallet.setAvailableBalance(buyerAvailableBalanceBeforeCredit.add(amount));
+            buyerWallet.setAvailableBalance(buyerAvailableBalanceBeforeCredit.add(paymentCompletionEventDto.amount()));
 
             int idemotencyRowsAffected = idempotencyService.createRecord(
-                    clientRequestKey,
-                    buyerUserId.toString(),
+                    paymentCompletionEventDto.clientRequestKey(),
+                    paymentCompletionEventDto.buyerUserId().toString(),
                     AppExtensions.CREDIT_WALLET_EVENT_TYPE,
                     requestFingerPrint
             );
 
             if (idemotencyRowsAffected == 0) {
 
-                log.warn("Duplicate request detected for client request key: {}", clientRequestKey);
+                log.warn("Duplicate request detected for client request key: {}", paymentCompletionEventDto.clientRequestKey());
 
                 return;
             }
 
             walletLedgerService.saveLedgerEntry(
                     buyerWallet,
-                    amount,
+                    paymentCompletionEventDto.amount(),
                     LedgerEntryType.CREDIT,
                     ReferenceType.PAYMENT,
-                    paymentId);
+                    paymentCompletionEventDto.paymentId()
+            );
 
             BigDecimal buyerAvailableBalanceAfterCredit = buyerWallet.getAvailableBalance();
 
-            buyerWallet.setAvailableBalance(buyerAvailableBalanceAfterCredit.subtract(amount));
+            buyerWallet.setAvailableBalance(buyerAvailableBalanceAfterCredit.subtract(paymentCompletionEventDto.amount()));
 
             BigDecimal lockedBalance = buyerWallet.getLockedBalance();
 
-            buyerWallet.setLockedBalance(lockedBalance.add(amount));
+            buyerWallet.setLockedBalance(lockedBalance.add(paymentCompletionEventDto.amount()));
 
             walletLedgerService.saveLedgerEntry(
                     buyerWallet,
-                    amount,
+                    paymentCompletionEventDto.amount(),
                     LedgerEntryType.DEBIT,
                     ReferenceType.ESCROW,
-                    orderId
+                    paymentCompletionEventDto.orderId()
             );
 
             escrowTransactionService.saveEscrowTransaction(
                     buyerWallet.getId(),
                     sellerWallet.getId(),
-                    orderId,
-                    amount
+                    paymentCompletionEventDto.orderId(),
+                    paymentCompletionEventDto.amount()
             );
 
             walletRepository.save(buyerWallet);
 
+            DriverSearchEventDto driverSearchEventDto = new DriverSearchEventDto(
+                    paymentCompletionEventDto.sellerLatitude(),
+                    paymentCompletionEventDto.sellerLongitude(),
+                    paymentCompletionEventDto.deliveryFee(),
+                    paymentCompletionEventDto.pickupAddress(),
+                    paymentCompletionEventDto.dropOffAddress(),
+                    paymentCompletionEventDto.orderReferenceNumber(),
+                    paymentCompletionEventDto.clientRequestKey()
+            );
+
+            outboxEventService.saveEvent(
+                    paymentCompletionEventDto.buyerUserId().toString(),
+                    DRIVER_SEARCH_EVENT_TYPE,
+                    DRIVER_SEARCH_KAFKA_BINDING,
+                    driverSearchEventDto,
+                    paymentCompletionEventDto.clientRequestKey()
+            );
+
         } catch (Exception ex) {
 
-            log.error("Error credit wallet for user with user ID: {}", buyerUserId, ex);
+            log.error("Error credit wallet for user with user ID: {}", paymentCompletionEventDto.buyerUserId(), ex);
 
             throw ex;
 

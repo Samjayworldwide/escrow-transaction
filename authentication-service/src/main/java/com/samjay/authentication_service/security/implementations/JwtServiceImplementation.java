@@ -1,6 +1,7 @@
 package com.samjay.authentication_service.security.implementations;
 
 import com.samjay.authentication_service.entities.User;
+import com.samjay.authentication_service.enumerations.Roles;
 import com.samjay.authentication_service.globalexceptionhandlers.exceptions.ApplicationException;
 import com.samjay.authentication_service.security.interfaces.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,8 @@ public class JwtServiceImplementation implements JwtService {
             throw new ApplicationException("User details not found in authentication object", HttpStatus.FORBIDDEN);
         }
 
+        String username = user.getRole() == Roles.CUSTOMER ? user.getUsername() : "";
+
         List<String> authorities = authentication.getAuthorities()
                 .stream()
                 .map(GrantedAuthority::getAuthority)
@@ -62,7 +65,7 @@ public class JwtServiceImplementation implements JwtService {
                 .id(UUID.randomUUID().toString())
                 .claim("authorities", authorities)
                 .claim("userId", user.getId().toString())
-                .claim("username", user.getUsername())
+                .claim("username", username)
                 .build();
 
         JwsHeader header = JwsHeader
