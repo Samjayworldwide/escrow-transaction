@@ -26,5 +26,5 @@ public class CompleteProfileRequest {
     private String licensePlateNumber;
 
     @NotBlank(message = "Identification number is required")
-    private String identifiationNumber;
+    private String identificationNumber;
 }

@@ -53,7 +53,7 @@ public class Driver {
     private String licensePlateNumber;
 
     @Column(length = 20)
-    private String identifiationNumber;
+    private String identificationNumber;
 
     private double profileCompletion;
 
@@ -89,5 +89,12 @@ public class Driver {
         this.createdAt = LocalDateTime.now();
 
         this.isDocumentVerified = false;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+
+        this.updatedAt = LocalDateTime.now();
+
     }
 }

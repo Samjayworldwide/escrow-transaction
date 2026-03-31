@@ -52,4 +52,11 @@ public class DriverDocument {
         this.verificationStatus = VerificationStatus.PENDING;
     }
 
+    @PreUpdate
+    public void preUpdate() {
+
+        this.updatedAt = LocalDateTime.now();
+
+    }
+
 }

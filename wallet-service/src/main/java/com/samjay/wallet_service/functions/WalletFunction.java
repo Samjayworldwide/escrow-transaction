@@ -46,14 +46,7 @@ public class WalletFunction {
 
             try {
 
-                walletService.creditWallet(
-                        paymentCompletionEventDto.clientRequestKey(),
-                        paymentCompletionEventDto.buyerUserId(),
-                        paymentCompletionEventDto.sellerUserId(),
-                        paymentCompletionEventDto.amount(),
-                        paymentCompletionEventDto.paymentId(),
-                        paymentCompletionEventDto.orderId()
-                );
+                walletService.creditWallet(paymentCompletionEventDto);
 
             } catch (Exception ex) {
 

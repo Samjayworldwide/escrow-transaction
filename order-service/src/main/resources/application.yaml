@@ -74,6 +74,10 @@ spring:
           destination: order-approved
           producer:
             error-channel-enabled: true
+        paymentCompletion-out-0:
+          destination: payment-completed
+          producer:
+            error-channel-enabled: true
         updateOrderAfterPaymentVerification-in-0:
           destination: payment-verified
           group: ${spring.application.name}
@@ -82,10 +86,6 @@ spring:
             back-off-initial-interval: 1000
             back-off-multiplier: 2.0
             back-off-max-interval: 10000
-        updateOrderAfterPaymentVerification-out-0:
-          destination: payment-completed
-          producer:
-            error-channel-enabled: true
         updateOrderAfterPaymentVerificationDlq-in-0:
           destination: update-order-after-payment-verification.DLQ
           group: ${spring.application.name}-payment-verification-dlq
@@ -188,3 +188,8 @@ outbox:
     batch-size: 50
     backoff-multiplier-seconds: 30
     cleanup-retention-hours: 24
+
+google:
+  api:
+    key: ${GOOGLE_API_KEY}
+  base-url: https://maps.googleapis.com/maps/api/

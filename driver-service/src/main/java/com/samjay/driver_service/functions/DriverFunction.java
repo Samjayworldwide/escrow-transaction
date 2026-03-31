@@ -1,5 +1,6 @@
 package com.samjay.driver_service.functions;
 
+import com.samjay.driver_service.dtos.events.DriverSearchEventDto;
 import com.samjay.driver_service.dtos.events.UserRegisteredEventDto;
 import com.samjay.driver_service.enumerations.Roles;
 import com.samjay.driver_service.services.interfaces.DriverService;
@@ -38,6 +39,29 @@ public class DriverFunction {
                 log.error("Error creating driver for user with user ID: {}. Error message: {}", userRegisteredEventDto.userId(), e.getMessage());
 
                 throw e;
+            }
+        };
+    }
+
+    @Bean
+    public Consumer<DriverSearchEventDto> driverSearch() {
+
+        return driverSearchEventDto -> {
+
+            try {
+
+                log.info("Received FindNearestDriver event to find nearest driver for order with reference number: {}",
+                        driverSearchEventDto.orderReferenceNumber());
+
+                driverService.searchForDriverClosestToSeller(driverSearchEventDto);
+
+                log.info("Successfully found nearest driver for order with reference number: {}", driverSearchEventDto.orderReferenceNumber());
+
+            } catch (Exception ex) {
+
+                log.error("Error finding driver for order with reference number {}", driverSearchEventDto.orderReferenceNumber());
+
+                throw ex;
             }
         };
     }
