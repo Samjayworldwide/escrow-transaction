@@ -29,6 +29,10 @@ public class AppExtensions {
 
     public static final String ORDER_APPROVAL_KAFKA_BINDING = "orderApproval-out-0";
 
+    public static final String PAYMENT_COMPLETION_EVENT_TYPE = "PAYMENT_COMPLETION";
+
+    public static final String PAYMENT_COMPLETION_KAFKA_BINDING = "paymentCompletion-out-0";
+
     public static <T> String serialize(T object) {
 
         try {

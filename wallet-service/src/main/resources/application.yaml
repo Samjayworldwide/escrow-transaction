@@ -48,6 +48,10 @@ spring:
         createUserWalletDlq-in-0:
           destination: create-user-wallet.DLQ
           group: ${spring.application.name}-creation-dlq
+        driverSearchBinding-out-0:
+          destination: driver-search
+          producer:
+            error-channel-enabled: true
         creditWalletOnPaymentCompletionDlq-in-0:
           destination: credit-wallet-on-payment-completion.DLQ
           group: ${spring.application.name}-credit-dlq
@@ -55,6 +59,14 @@ spring:
         binder:
           brokers:
             - localhost:9092
+          producer-properties:
+            retries: 3
+            retry.backoff.ms: 1000
+            acks: all
+            enable.idempotence: true
+            max.in.flight.requests.per.connection: 5
+            delivery.timeout.ms: 30000
+            request.timeout.ms: 10000
         bindings:
           createUserWallet-in-0:
             consumer:
@@ -77,6 +89,8 @@ management:
       probes:
         enabled: true
   health:
+    outbox:
+      enabled: true
     readinessstate:
       enabled: true
     livenessstate:
@@ -98,3 +112,12 @@ eureka:
     registerWithEureka: true
     serviceUrl:
       defaultZone: http://localhost:8082/eureka/
+
+outbox:
+  poll:
+    pending-interval-ms: 5000
+    retry-interval-ms: 60000
+    cleanup-interval-ms: 3600000
+    batch-size: 50
+    backoff-multiplier-seconds: 30
+    cleanup-retention-hours: 24

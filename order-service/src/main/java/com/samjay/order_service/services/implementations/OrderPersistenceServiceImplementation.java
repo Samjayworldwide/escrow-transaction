@@ -4,17 +4,16 @@ import com.samjay.ValidateAndFetchCustomerUsernameResponse;
 import com.samjay.order_service.dtos.events.OrderCreationEventDto;
 import com.samjay.order_service.dtos.requests.OrderCreationRequest;
 import com.samjay.order_service.dtos.responses.ApiResponse;
+import com.samjay.order_service.dtos.responses.LatitudeAndLongitudeResponse;
 import com.samjay.order_service.dtos.responses.OrderCreationResponse;
 import com.samjay.order_service.dtos.responses.UserIdentifier;
 import com.samjay.order_service.entities.ItemDetails;
 import com.samjay.order_service.entities.Order;
+import com.samjay.order_service.entities.OrderDeliveryInformation;
 import com.samjay.order_service.entities.OrderParticipantInformation;
 import com.samjay.order_service.enumerations.OrderCreator;
 import com.samjay.order_service.repositories.OrderRepository;
-import com.samjay.order_service.services.interfaces.CacheService;
-import com.samjay.order_service.services.interfaces.IdempotencyService;
-import com.samjay.order_service.services.interfaces.OrderPersistenceService;
-import com.samjay.order_service.services.interfaces.OutboxEventService;
+import com.samjay.order_service.services.interfaces.*;
 import com.samjay.order_service.utility.AppExtensions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +38,8 @@ public class OrderPersistenceServiceImplementation implements OrderPersistenceSe
 
     private final OutboxEventService outboxEventService;
 
+    private final GoogleMapService googleMapService;
+
     private final CacheService cacheService;
 
     @Override
@@ -58,6 +59,14 @@ public class OrderPersistenceServiceImplementation implements OrderPersistenceSe
 
         OrderParticipantInformation participantInformation = new OrderParticipantInformation();
 
+        OrderDeliveryInformation deliveryInformation = new OrderDeliveryInformation();
+
+        ApiResponse<LatitudeAndLongitudeResponse> latitudeAndLongitudeResponseApiResponse = googleMapService
+                .getLatitudeAndLongitudeFromAddress(orderCreationRequest.getAddress());
+
+        if (!latitudeAndLongitudeResponseApiResponse.isSuccessful())
+            return ApiResponse.error("Failed to fetch geo-coordinates for the provided address. Please ensure the address is valid and try again.");
+
         if (orderCreationRequest.getOrderCreator() == OrderCreator.BUYER) {
 
             participantInformation.setBuyerUserId(userIdentifier.userId());
@@ -71,6 +80,10 @@ public class OrderPersistenceServiceImplementation implements OrderPersistenceSe
             participantInformation.setDropOffState(orderCreationRequest.getState());
 
             participantInformation.setDropOffAddress(orderCreationRequest.getAddress());
+
+            deliveryInformation.setDropOffAddressLatitude(latitudeAndLongitudeResponseApiResponse.getResponseBody().latitude());
+
+            deliveryInformation.setDropOffAddressLongitude(latitudeAndLongitudeResponseApiResponse.getResponseBody().longitude());
 
             order.setOrderCreator(OrderCreator.BUYER);
 
@@ -88,6 +101,10 @@ public class OrderPersistenceServiceImplementation implements OrderPersistenceSe
 
             participantInformation.setPickupAddress(orderCreationRequest.getAddress());
 
+            deliveryInformation.setPickupAddressLatitude(latitudeAndLongitudeResponseApiResponse.getResponseBody().latitude());
+
+            deliveryInformation.setPickupAddressLongitude(latitudeAndLongitudeResponseApiResponse.getResponseBody().longitude());
+
             order.setOrderCreator(OrderCreator.SELLER);
 
         } else {
@@ -96,6 +113,8 @@ public class OrderPersistenceServiceImplementation implements OrderPersistenceSe
         }
 
         order.setParticipantInformation(participantInformation);
+
+        order.setDeliveryInformation(deliveryInformation);
 
         itemDetailsList.forEach(order::addItemDetails);
 

@@ -1,5 +1,6 @@
 package com.samjay.driver_service.functions.dlqs;
 
+import com.samjay.driver_service.dtos.events.DriverSearchEventDto;
 import com.samjay.driver_service.dtos.events.UserRegisteredEventDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -20,5 +21,12 @@ public class DriverFunctionDlq {
     public Consumer<UserRegisteredEventDto> createDriverDlq() {
 
         return failedRecord -> log.error("Message landed in DLQ — manual intervention required for user: {}", failedRecord.userId());
+    }
+
+    @Bean
+    public Consumer<DriverSearchEventDto> driverSearchDlq() {
+
+        return failedRecord -> log.error("Message landed in DLQ — manual intervention required for order with reference number: {}",
+                failedRecord.orderReferenceNumber());
     }
 }

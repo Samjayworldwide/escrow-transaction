@@ -30,6 +30,7 @@ public class SecurityConfiguration {
                         .permitAll()
                         .pathMatchers("/escrow/order-service/api/order/**").authenticated()
                         .pathMatchers("/escrow/payment-service/api/payment/**").authenticated()
+                        .pathMatchers("/escrow/driver-service/**").authenticated()
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

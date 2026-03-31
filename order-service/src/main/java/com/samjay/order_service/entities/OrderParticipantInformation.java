@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -43,4 +44,16 @@ public class OrderParticipantInformation {
     private String dropOffState;
 
     private String dropOffAddress;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+
+        this.createdAt = LocalDateTime.now();
+
+    }
 }

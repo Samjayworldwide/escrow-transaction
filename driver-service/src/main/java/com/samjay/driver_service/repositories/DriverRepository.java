@@ -19,7 +19,7 @@ public interface DriverRepository extends JpaRepository<Driver, UUID> {
             """
                     SELECT d from Driver d
                     LEFT JOIN FETCH d.documents
-                    WHERE d.id = :driverId
+                    WHERE d.userId = :driverId
                     """
     )
     Optional<Driver> findDriverByIdWithDocuments(@Param("driverId") UUID driverId);

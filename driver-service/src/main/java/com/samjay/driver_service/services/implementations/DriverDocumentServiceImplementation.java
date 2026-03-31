@@ -13,6 +13,7 @@ import com.samjay.driver_service.services.interfaces.AzureBlobService;
 import com.samjay.driver_service.services.interfaces.DriverDocumentService;
 import com.samjay.driver_service.utility.AppExtensions;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DriverDocumentServiceImplementation implements DriverDocumentService {
 
     private final AzureBlobService azureBlobService;
@@ -77,6 +79,8 @@ public class DriverDocumentServiceImplementation implements DriverDocumentServic
 
         if (!nationalIdBlobExists)
             return ApiResponse.error("An error occurred uploading the national ID. Please try again.");
+
+        log.info("THIS IS THE IDENTIFIER {}", userIdentifier.userId());
 
         Optional<Driver> optionalDriver = driverRepository.findDriverByIdWithDocuments(UUID.fromString(userIdentifier.userId()));
 

@@ -22,11 +22,17 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080
+          jwk-set-uri: http://localhost:8080/oauth2/jwks
   cloud:
     function:
-      definition: createDriver;createDriverDlq
+      definition: createDriver;createDriverDlq;driverSearch;driverSearchDlq
     stream:
       bindings:
         createDriver-in-0:
@@ -37,9 +43,20 @@ spring:
             back-off-initial-interval: 1000
             back-off-multiplier: 2.0
             back-off-max-interval: 10000
+        driverSearch-in-0:
+          destination: driver-search
+          group: ${spring.application.name}
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
         createDriverDlq-in-0:
           destination: create-driver.DLQ
           group: ${spring.application.name}-creation-dlq
+        driverSearchDlq-in-0:
+          destination: driver-search.DLQ
+          group: ${spring.application.name}-search-dlq
       kafka:
         binder:
           brokers:
@@ -49,6 +66,10 @@ spring:
             consumer:
               enable-dlq: true
               dlq-name: create-driver.DLQ
+          driverSearch-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: driver-search.DLQ
 
 management:
   endpoints:
@@ -89,3 +110,12 @@ eureka:
     registerWithEureka: true
     serviceUrl:
       defaultZone: http://localhost:8082/eureka/
+
+redis:
+  host: localhost
+  port: 6379
+  pool:
+    max-total: 20
+    max-idle: 10
+    min-idle: 5
+    max-wait-millis: 3000

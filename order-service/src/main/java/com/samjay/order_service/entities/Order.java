@@ -70,6 +70,10 @@ public class Order {
     @JoinColumn(name = "participant_information_id", nullable = false, updatable = false)
     private OrderParticipantInformation participantInformation;
 
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "delivery_information_id", nullable = false, updatable = false)
+    private OrderDeliveryInformation deliveryInformation;
+
     @PrePersist
     protected void onCreate() {
 
