@@ -5,3 +5,5 @@
 # Private keys
 **/*.pem
 **/private*.pem
+*.json
+**/*.json

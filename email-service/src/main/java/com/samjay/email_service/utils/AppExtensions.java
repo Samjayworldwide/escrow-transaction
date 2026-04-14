@@ -299,4 +299,154 @@ public class AppExtensions {
                 </html>
                 """.formatted(title, title, bodyMessage, orderReferenceNumber, subMessage);
     }
+
+    public static String getEmailDeliveryAcceptanceMailBody(String driverFirstname,
+                                                            String driverLastname,
+                                                            String driverPhoneNumber,
+                                                            String vehicleLicenseNumber,
+                                                            String pickupDeliveryCode,
+                                                            String dropoffDeliveryCode,
+                                                            String orderReferenceNumber,
+                                                            boolean isBuyer) {
+
+        String title = isBuyer
+                ? "Driver Assigned — Driver enroute to seller's address"
+                : "Delivery Accepted — Driver enroute to your address";
+
+        String code = isBuyer ? dropoffDeliveryCode : pickupDeliveryCode;
+
+        String codeLabel = isBuyer
+                ? "Give this code to the driver upon receiving your delivery"
+                : "Give this code to the driver when they arrive for pickup";
+
+        String bodyMessage = isBuyer
+                ? "A driver has been assigned to your escrow delivery order with reference number <strong>%s</strong>. The driver is now enroute to the seller's address to pick up your item. Below are the driver's details and your delivery code."
+                .formatted(orderReferenceNumber)
+                : "Your escrow delivery order with reference number <strong>%s</strong> has been accepted by a driver, who is now enroute to your address for pickup. Below are the driver's details and your pickup code."
+                .formatted(orderReferenceNumber);
+
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>%s</title>
+                </head>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 5px;">
+                        <h2 style="color: #2196F3;">%s</h2>
+                
+                        <p>%s</p>
+                
+                        <div style="background-color: #e3f2fd; padding: 20px; border-radius: 4px; margin: 20px 0;">
+                            <h3 style="color: #1565C0; margin: 0 0 12px 0;">Driver Information</h3>
+                            <table style="width: 100%%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 6px 0; color: #555; width: 40%%;">Driver Name</td>
+                                    <td style="padding: 6px 0; font-weight: bold; color: #222;">%s %s</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; color: #555;">Phone Number</td>
+                                    <td style="padding: 6px 0; font-weight: bold; color: #222;">%s</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; color: #555;">Vehicle License</td>
+                                    <td style="padding: 6px 0; font-weight: bold; color: #222;">%s</td>
+                                </tr>
+                            </table>
+                        </div>
+                
+                        <p style="color: #555;">%s:</p>
+                
+                        <div style="background-color: #e8f5e9; padding: 20px; border-radius: 4px; margin: 20px 0; text-align: center;">
+                            <h1 style="color: #4CAF50; margin: 0; font-size: 32px; letter-spacing: 6px;">%s</h1>
+                        </div>
+                
+                        <p>If you have any questions or concerns regarding this delivery, please contact our support team immediately.</p>
+                
+                        <p style="margin-top: 30px;">Best regards,<br>The Team</p>
+                
+                        <hr style="margin-top: 40px; border: none; border-top: 1px solid #ddd;">
+                    </div>
+                </body>
+                </html>
+                """.formatted(title, title, bodyMessage,
+                driverFirstname, driverLastname,
+                driverPhoneNumber,
+                vehicleLicenseNumber,
+                codeLabel,
+                code);
+    }
+
+    public static String getEscrowReleaseMailBody(String orderReferenceNumber,
+                                                  String amount,
+                                                  String buyerAvailableBalance,
+                                                  String sellerAvailableBalance,
+                                                  boolean isBuyer) {
+
+        String title = isBuyer ? "Order Delivered — Escrow Released" : "Escrow Released — Order Delivered";
+
+        String bodyMessage = isBuyer
+                ? "Your escrow delivery order with reference number <strong>%s</strong> has been marked as delivered by the driver, and the escrow amount of ₦<strong>%s</strong> has been released to the seller. Your available balance is ₦<strong>%s</strong>.".formatted(orderReferenceNumber, amount, buyerAvailableBalance)
+                : "The escrow delivery order with reference number <strong>%s</strong> has been marked as delivered by the driver, and the escrow amount of ₦<strong>%s</strong> has been credited to your wallet. Your available balance is ₦<strong>%s</strong>.".formatted(orderReferenceNumber, amount, sellerAvailableBalance);
+
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>%s</title>
+                </head>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 5px;">
+                        <h2 style="color: #2196F3;">%s</h2>
+                
+                        <p>%s</p>
+                
+                        <div style="background-color: #e8f5e9; padding: 20px; border-radius: 4px; margin: 20px 0; text-align: center;">
+                            <h1 style="color: #4CAF50; margin: 0; font-size: 24px; letter-spacing: 3px;">%s</h1>
+                        </div>
+                
+                        <p>If you have any questions or concerns regarding this order or payment, please contact our support team immediately.</p>
+                
+                        <p style="margin-top: 30px;">Best regards,<br>The Team</p>
+                
+                        <hr style="margin-top: 40px; border: none; border-top: 1px solid #ddd;">
+                    </div>
+                </body>
+                </html>
+                """.formatted(title, title, bodyMessage, orderReferenceNumber);
+    }
+
+    public static String getDriverWalletCreditMailBody(String orderReferenceNumber, String amount, String availableBalance) {
+
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Wallet Credit Notification</title>
+                </head>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 5px;">
+                        <h2 style="color: #2196F3;">Wallet Credit Notification</h2>
+                
+                        <p>Your wallet has been credited with ₦<strong>%s</strong> from the completed delivery order with reference number:</p>
+                
+                        <div style="background-color: #e8f5e9; padding: 20px; border-radius: 4px; margin: 20px 0; text-align: center;">
+                            <h1 style="color: #4CAF50; margin: 0; font-size: 24px; letter-spacing: 3px;">%s</h1>
+                        </div>
+                
+                        <p>Your new available balance is ₦<strong>%s</strong>.</p>
+                
+                        <p>If you have any questions or concerns regarding this credit, please contact our support team immediately.</p>
+                
+                        <p style="margin-top: 30px;">Best regards,<br>The Team</p>
+                
+                        <hr style="margin-top: 40px; border: none; border-top: 1px solid #ddd;">
+                    </div>
+                </body>
+                </html>
+                """.formatted(amount, orderReferenceNumber, availableBalance);
+    }
 }

@@ -1,5 +1,7 @@
 package com.samjay.order_service.functions;
 
+import com.samjay.order_service.dtos.events.OrderDeliveryUpdateEventDto;
+import com.samjay.order_service.dtos.events.OrderTrackingStageUpdateEventDto;
 import com.samjay.order_service.dtos.events.PaymentVerificationEventDto;
 import com.samjay.order_service.services.interfaces.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,42 @@ public class OrderFunction {
             } catch (Exception e) {
 
                 log.error("Error updating order after payment verification: {}", e.getMessage());
+
+                throw e;
+            }
+        };
+    }
+
+    @Bean
+    public Consumer<OrderDeliveryUpdateEventDto> updateOrderAfterAssignedToDriver() {
+
+        return orderDeliveryUpdateEventDto -> {
+
+            try {
+
+                orderService.updateOrderStatusAfterAssignedToDriver(orderDeliveryUpdateEventDto);
+
+            } catch (Exception e) {
+
+                log.error("Error updating order after assigned to driver: {}", e.getMessage());
+
+                throw e;
+            }
+        };
+    }
+
+    @Bean
+    public Consumer<OrderTrackingStageUpdateEventDto> updateOrderTrackingStage() {
+
+        return orderTrackingStageUpdateEventDto -> {
+
+            try {
+
+                orderService.updateOrderTrackingStage(orderTrackingStageUpdateEventDto);
+
+            } catch (Exception e) {
+
+                log.error("Error updating order tracking stage: {}", e.getMessage());
 
                 throw e;
             }

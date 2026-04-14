@@ -1,10 +1,16 @@
 package com.samjay.order_service.services.grpcserviceimplementation;
 
+import com.samjay.*;
 import com.samjay.FetchOrderDetailsRequest;
 import com.samjay.FetchOrderDetailsResponse;
+import com.samjay.OrderDetailsRequest;
+import com.samjay.OrderDetailsResponse;
 import com.samjay.OrderServiceGrpc;
+import com.samjay.OrderTrackingStageRequest;
+import com.samjay.OrderTrackingStageResponse;
 import com.samjay.order_service.entities.Order;
 import com.samjay.order_service.enumerations.OrderStatus;
+import com.samjay.order_service.enumerations.PaymentStatus;
 import com.samjay.order_service.repositories.OrderRepository;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +46,7 @@ public class OrderServiceGrpcImplementation extends OrderServiceGrpc.OrderServic
                         .setIsFound(false)
                         .setIsApproved(false)
                         .setIsPaidByBuyer(false)
+                        .setIsOrderAlreadyPaid(false)
                         .setTotalPriceOfItems(0)
                         .setOrderRefrenceNumber("")
                         .build();
@@ -53,21 +60,30 @@ public class OrderServiceGrpcImplementation extends OrderServiceGrpc.OrderServic
 
             Order order = optionalOrder.get();
 
-            boolean isApproved = order.getOrderStatus() == OrderStatus.APPROVED;
+            boolean isUnApproved = order.getOrderStatus() == OrderStatus.UNAPPROVED;
+
+            boolean isOrderAlreadyPaid = order.getPaymentStatus() == PaymentStatus.PAID;
 
             boolean isPaidByBuyer = order.getParticipantInformation().getBuyerUserId().equals(request.getUserId());
 
-            BigDecimal totalPriceOfItems = order.getItemDetails().stream()
+            BigDecimal totalPriceOfItems = order
+                    .getItemDetails()
+                    .stream()
                     .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal deliveryFee = order.getDeliveryInformation().getDeliveryFee();
+
+            BigDecimal totalCost = totalPriceOfItems.add(deliveryFee);
 
             response = FetchOrderDetailsResponse
                     .newBuilder()
                     .setIsFound(true)
-                    .setIsApproved(isApproved)
+                    .setIsApproved(isUnApproved)
                     .setIsPaidByBuyer(isPaidByBuyer)
-                    .setTotalPriceOfItems(totalPriceOfItems.doubleValue())
+                    .setTotalPriceOfItems(totalCost.doubleValue())
                     .setOrderRefrenceNumber(order.getOrderReferenceNumber())
+                    .setIsOrderAlreadyPaid(isOrderAlreadyPaid)
                     .build();
 
             responseObserver.onNext(response);
@@ -79,8 +95,120 @@ public class OrderServiceGrpcImplementation extends OrderServiceGrpc.OrderServic
             log.error("Error while logging request details: {}", e.getMessage());
 
             responseObserver.onError(io.grpc.Status.INTERNAL
-                    .withDescription("Internal error while validating username")
+                    .withDescription("Internal error while fetching order details")
                     .withCause(e)
+                    .asRuntimeException()
+            );
+        }
+    }
+
+    @Override
+    public void getOrderDetails(OrderDetailsRequest request, StreamObserver<OrderDetailsResponse> responseObserver) {
+
+        try {
+
+            log.info("Received request to fetch order participant details for order ID: {}", request.getOrderId());
+
+            OrderDetailsResponse response;
+
+            Optional<Order> optionalOrder = orderRepository.findOrderByIdWithDeliveryInformationAndParticipantInformation(UUID.fromString(request.getOrderId()));
+
+            if (optionalOrder.isEmpty()) {
+
+                response = OrderDetailsResponse
+                        .newBuilder()
+                        .setIsFound(false)
+                        .build();
+
+                responseObserver.onNext(response);
+
+                responseObserver.onCompleted();
+
+                return;
+            }
+
+            Order order = optionalOrder.get();
+
+            response = OrderDetailsResponse
+                    .newBuilder()
+                    .setIsFound(true)
+                    .setOrderReferenceNumber(order.getOrderReferenceNumber())
+                    .setBuyerUserId(order.getParticipantInformation().getBuyerUserId())
+                    .setSellerUserId(order.getParticipantInformation().getSellerUserId())
+                    .setBuyerEmail(order.getParticipantInformation().getBuyerEmail())
+                    .setSellerEmail(order.getParticipantInformation().getSellerEmail())
+                    .setPickupAddress(order.getParticipantInformation().getPickupAddress())
+                    .setDropOffAddress(order.getParticipantInformation().getDropOffAddress())
+                    .setDeliveryFee(order.getDeliveryInformation().getDeliveryFee().doubleValue())
+                    .build();
+
+            responseObserver.onNext(response);
+
+            responseObserver.onCompleted();
+
+        } catch (Exception ex) {
+
+            log.error("Error while logging request details: {}", ex.getMessage());
+
+            responseObserver.onError(io.grpc.Status.INTERNAL
+                    .withDescription("Internal error while getting order participant details")
+                    .withCause(ex)
+                    .asRuntimeException()
+            );
+        }
+    }
+
+    @Override
+    public void getOrderTrackingStage(OrderTrackingStageRequest request, StreamObserver<OrderTrackingStageResponse> responseObserver) {
+
+        try {
+
+            log.info("Received request to fetch order tracking stage for order ID: {}", request.getOrderId());
+
+            OrderTrackingStageResponse response;
+
+            Optional<Order> optionalOrder = orderRepository.findByIdWithParticipantInformation(UUID.fromString(request.getOrderId()));
+
+            if (optionalOrder.isEmpty()) {
+
+                response = OrderTrackingStageResponse
+                        .newBuilder()
+                        .setIsFound(false)
+                        .setCurrentStage("")
+                        .setSellerUserId("")
+                        .setBuyerUserId("")
+                        .setOrderRefrenceNumber("")
+                        .build();
+
+                responseObserver.onNext(response);
+
+                responseObserver.onCompleted();
+
+                return;
+            }
+
+            Order order = optionalOrder.get();
+
+            response = OrderTrackingStageResponse
+                    .newBuilder()
+                    .setIsFound(true)
+                    .setCurrentStage(order.getTrackingStage().name())
+                    .setOrderRefrenceNumber(order.getOrderReferenceNumber())
+                    .setBuyerUserId(order.getParticipantInformation().getBuyerUserId())
+                    .setSellerUserId(order.getParticipantInformation().getSellerUserId())
+                    .build();
+
+            responseObserver.onNext(response);
+
+            responseObserver.onCompleted();
+
+        } catch (Exception ex) {
+
+            log.error("Error while logging request details: {}", ex.getMessage());
+
+            responseObserver.onError(io.grpc.Status.INTERNAL
+                    .withDescription("Internal error while getting order tracking stage")
+                    .withCause(ex)
                     .asRuntimeException()
             );
         }

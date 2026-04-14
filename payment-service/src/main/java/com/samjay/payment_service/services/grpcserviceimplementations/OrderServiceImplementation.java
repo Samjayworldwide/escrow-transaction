@@ -27,18 +27,31 @@ public class OrderServiceImplementation implements OrderService {
     @Override
     public ApiResponse<FetchOrderDetailsResponse> fetchOrderDetails(String orderId, String userId) {
 
-        FetchOrderDetailsRequest fetchOrderDetailsRequest = FetchOrderDetailsRequest
-                .newBuilder()
-                .setOrderId(orderId)
-                .setUserId(userId)
-                .build();
+        try {
 
-        FetchOrderDetailsResponse fetchOrderDetailsResponse = orderServiceBlockingStub
-                .withDeadlineAfter(5, TimeUnit.SECONDS)
-                .fetchOrderDetails(fetchOrderDetailsRequest);
+            FetchOrderDetailsRequest fetchOrderDetailsRequest = FetchOrderDetailsRequest
+                    .newBuilder()
+                    .setOrderId(orderId)
+                    .setUserId(userId)
+                    .build();
 
-        return ApiResponse.success("Order items amount fetched successfully.", fetchOrderDetailsResponse);
+            FetchOrderDetailsResponse fetchOrderDetailsResponse = orderServiceBlockingStub
+                    .withDeadlineAfter(5, TimeUnit.SECONDS)
+                    .fetchOrderDetails(fetchOrderDetailsRequest);
 
+            return ApiResponse.success("Order items amount fetched successfully.", fetchOrderDetailsResponse);
+        } catch (Exception ex) {
+
+            log.error(
+                    "Error while fetching order items amount with order ID: {} and user ID: {}, Exception message: {}",
+                    orderId,
+                    userId,
+                    ex.getMessage(),
+                    ex
+            );
+
+            throw ex;
+        }
     }
 
     public ApiResponse<FetchOrderDetailsResponse> fallbackfetchOrderDetails(String orderId, String userId, Throwable throwable) {

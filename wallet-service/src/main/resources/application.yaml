@@ -24,9 +24,16 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080
+          jwk-set-uri: http://localhost:8080/oauth2/jwks
+
   cloud:
     function:
-      definition: createUserWallet;createUserWalletDlq;creditWalletOnPaymentCompletion;creditWalletOnPaymentCompletionDlq
+      definition: createUserWallet;createUserWalletDlq;creditWalletOnPaymentCompletion;creditWalletOnPaymentCompletionDlq;releasePaymentOnOrderSettlement;releasePaymentOnOrderSettlementDlq;creditDriverOnDeliveryCompletion;creditDriverOnDeliveryCompletionDlq
     stream:
       bindings:
         createUserWallet-in-0:
@@ -45,16 +52,46 @@ spring:
             back-off-initial-interval: 1000
             back-off-multiplier: 2.0
             back-off-max-interval: 10000
-        createUserWalletDlq-in-0:
-          destination: create-user-wallet.DLQ
-          group: ${spring.application.name}-creation-dlq
+        releasePaymentOnOrderSettlement-in-0:
+          destination: order-settled
+          group: ${spring.application.name}
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        creditDriverOnDeliveryCompletion-in-0:
+          destination: delivery-completed
+          group: ${spring.application.name}
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
         driverSearchBinding-out-0:
           destination: driver-search
           producer:
             error-channel-enabled: true
+        escrowReleaseCompletedBinding-out-0:
+          destination: escrow-release-completed
+          producer:
+            error-channel-enabled: true
+        driverWalletCreditNotificationBinding-out-0:
+          destination: driver-wallet-credited
+          producer:
+            error-channel-enabled: true
+        createUserWalletDlq-in-0:
+          destination: create-user-wallet.DLQ
+          group: ${spring.application.name}-creation-dlq
         creditWalletOnPaymentCompletionDlq-in-0:
           destination: credit-wallet-on-payment-completion.DLQ
           group: ${spring.application.name}-credit-dlq
+        releasePaymentOnOrderSettlementDlq-in-0:
+          destination: release-payment-on-order-settlement.DLQ
+          group: ${spring.application.name}-release-dlq
+        creditDriverOnDeliveryCompletionDlq-in-0:
+          destination: credit-driver-on-delivery-completion.DLQ
+          group: ${spring.application.name}-credit-driver-dlq
       kafka:
         binder:
           brokers:
@@ -76,6 +113,14 @@ spring:
             consumer:
               enable-dlq: true
               dlq-name: credit-wallet-on-payment-completion.DLQ
+          releasePaymentOnOrderSettlement-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: release-payment-on-order-settlement.DLQ
+          creditDriverOnDeliveryCompletion-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: credit-driver-on-delivery-completion.DLQ
 
 management:
   endpoints:

@@ -16,9 +16,23 @@ public class AppExtensions {
 
     public static final String CREDIT_WALLET_EVENT_TYPE = "CREDIT_WALLET";
 
+    public static final String USER_ID_CLAIM_KEY = "userId";
+
+    public static final String USERNAME_CLAIM_KEY = "username";
+
     public static final String DRIVER_SEARCH_EVENT_TYPE = "DRIVER_SEARCH_EVENT";
 
     public static final String DRIVER_SEARCH_KAFKA_BINDING = "driverSearchBinding-out-0";
+
+    public static final String ESCROW_RELEASE_EVENT_TYPE = "ESCROW_RELEASE_EVENT";
+
+    public static final String ESCROW_RELEASE_COMPLETED_EVENT_TYPE = "ESCROW_RELEASE_COMPLETED_EVENT";
+
+    public static final String ESCROW_RELEASE_COMPLETED_KAFKA_BINDING = "escrowReleaseCompletedBinding-out-0";
+
+    public static final String DRIVER_WALLET_CREDIT_NOTIFICATION_EVENT_TYPE = "DRIVER_WALLET_CREDIT_NOTIFICATION_EVENT";
+
+    public static final String DRIVER_WALLET_CREDIT_NOTIFICATION_KAFKA_BINDING = "driverWalletCreditNotificationBinding-out-0";
 
     public static <T> String serialize(T object) {
 

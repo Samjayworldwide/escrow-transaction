@@ -14,8 +14,11 @@ import java.util.UUID;
 @NoArgsConstructor
 public class PaymentRequest {
 
-    @NotNull(message = "Amount cannot be empty")
-    private BigDecimal amount;
+    @NotNull(message = "Total price of items is required.")
+    private BigDecimal totalPriceOfItems;
+
+    @NotNull(message = "Delivery fee is required.")
+    private BigDecimal deliveryFee;
 
     @NotBlank(message = "Description cannot be empty")
     private String description;

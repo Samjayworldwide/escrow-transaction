@@ -1,7 +1,13 @@
 package com.samjay.wallet_service.services.implementations;
 
+import com.samjay.wallet_service.configurations.AuthenticatedUserProvider;
+import com.samjay.wallet_service.dtos.events.DeliveryCompletedEventDto;
 import com.samjay.wallet_service.dtos.events.DriverSearchEventDto;
+import com.samjay.wallet_service.dtos.events.DriverWalletCreditNotificationEventDto;
 import com.samjay.wallet_service.dtos.events.PaymentCompletionEventDto;
+import com.samjay.wallet_service.dtos.responses.ApiResponse;
+import com.samjay.wallet_service.dtos.responses.BuyerAndSellerBalanceResponse;
+import com.samjay.wallet_service.dtos.responses.UserIdentifier;
 import com.samjay.wallet_service.entities.Wallet;
 import com.samjay.wallet_service.enumerations.LedgerEntryType;
 import com.samjay.wallet_service.enumerations.ReferenceType;
@@ -13,13 +19,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
-import static com.samjay.wallet_service.utility.AppExtensions.DRIVER_SEARCH_EVENT_TYPE;
-import static com.samjay.wallet_service.utility.AppExtensions.DRIVER_SEARCH_KAFKA_BINDING;
+import static com.samjay.wallet_service.utility.AppExtensions.*;
 
 @Service
 @RequiredArgsConstructor
@@ -32,9 +40,11 @@ public class WalletServiceImplementation implements WalletService {
 
     private final IdempotencyService idempotencyService;
 
-    private final EscrowTransactionService escrowTransactionService;
+    private final EscrowService escrowService;
 
     private final OutboxEventService outboxEventService;
+
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     @Transactional
     @Override
@@ -83,16 +93,14 @@ public class WalletServiceImplementation implements WalletService {
 
         try {
 
-            String fingerprintKey = paymentCompletionEventDto.clientRequestKey() + ":"
-                    + paymentCompletionEventDto.buyerUserId() + ":" + paymentCompletionEventDto.sellerUserId() + ":"
-                    + paymentCompletionEventDto.amount() + ":" + paymentCompletionEventDto.paymentId() + ":"
-                    + paymentCompletionEventDto.orderId();
+            String fingerprintKey = serialize(paymentCompletionEventDto);
 
             log.info("Generated fingerprint key for idempotency: {}", fingerprintKey);
 
-            String requestFingerPrint = AppExtensions.generateHash(fingerprintKey);
+            String requestFingerPrint = AppExtensions.generateHash(Objects.requireNonNull(fingerprintKey));
 
-            boolean requestExists = idempotencyService.recordExists(paymentCompletionEventDto.clientRequestKey(),
+            boolean requestExists = idempotencyService.recordExists(
+                    paymentCompletionEventDto.clientRequestKey(),
                     AppExtensions.CREDIT_WALLET_EVENT_TYPE,
                     requestFingerPrint
             );
@@ -118,10 +126,6 @@ public class WalletServiceImplementation implements WalletService {
                             HttpStatus.BAD_REQUEST)
                     );
 
-            BigDecimal buyerAvailableBalanceBeforeCredit = buyerWallet.getAvailableBalance();
-
-            buyerWallet.setAvailableBalance(buyerAvailableBalanceBeforeCredit.add(paymentCompletionEventDto.amount()));
-
             int idemotencyRowsAffected = idempotencyService.createRecord(
                     paymentCompletionEventDto.clientRequestKey(),
                     paymentCompletionEventDto.buyerUserId().toString(),
@@ -135,6 +139,10 @@ public class WalletServiceImplementation implements WalletService {
 
                 return;
             }
+
+            BigDecimal buyerAvailableBalanceBeforeCredit = buyerWallet.getAvailableBalance();
+
+            buyerWallet.setAvailableBalance(buyerAvailableBalanceBeforeCredit.add(paymentCompletionEventDto.amount()));
 
             walletLedgerService.saveLedgerEntry(
                     buyerWallet,
@@ -160,7 +168,7 @@ public class WalletServiceImplementation implements WalletService {
                     paymentCompletionEventDto.orderId()
             );
 
-            escrowTransactionService.saveEscrowTransaction(
+            escrowService.saveEscrowTransaction(
                     buyerWallet.getId(),
                     sellerWallet.getId(),
                     paymentCompletionEventDto.orderId(),
@@ -173,6 +181,8 @@ public class WalletServiceImplementation implements WalletService {
                     paymentCompletionEventDto.sellerLatitude(),
                     paymentCompletionEventDto.sellerLongitude(),
                     paymentCompletionEventDto.deliveryFee(),
+                    paymentCompletionEventDto.buyerUserId(),
+                    paymentCompletionEventDto.sellerUserId(),
                     paymentCompletionEventDto.pickupAddress(),
                     paymentCompletionEventDto.dropOffAddress(),
                     paymentCompletionEventDto.orderReferenceNumber(),
@@ -194,5 +204,158 @@ public class WalletServiceImplementation implements WalletService {
             throw ex;
 
         }
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    @Override
+    public BuyerAndSellerBalanceResponse escrowRelease(UUID buyerWalletId, UUID sellerWalletId, BigDecimal amount, UUID escrowTransactionId) {
+
+        Wallet buyerWallet = walletRepository.findById(buyerWalletId)
+                .orElseThrow(() -> new ApplicationException(
+                        "Buyer wallet not found for wallet ID: " + buyerWalletId,
+                        HttpStatus.BAD_REQUEST)
+                );
+
+        Wallet sellerWallet = walletRepository.findById(sellerWalletId)
+                .orElseThrow(() -> new ApplicationException(
+                        "Seller wallet not found for wallet ID: " + sellerWalletId,
+                        HttpStatus.BAD_REQUEST)
+                );
+
+        BigDecimal buyerLockedBalanceBeforeRelease = buyerWallet.getLockedBalance();
+
+        buyerWallet.setLockedBalance(buyerLockedBalanceBeforeRelease.subtract(amount));
+
+        walletLedgerService.saveLedgerEntry(
+                buyerWallet,
+                amount,
+                LedgerEntryType.DEBIT,
+                ReferenceType.ESCROW,
+                escrowTransactionId
+        );
+
+        BigDecimal sellerAvailableBalanceBeforeCredit = sellerWallet.getAvailableBalance();
+
+        sellerWallet.setAvailableBalance(sellerAvailableBalanceBeforeCredit.add(amount));
+
+        walletLedgerService.saveLedgerEntry(
+                sellerWallet,
+                amount,
+                LedgerEntryType.CREDIT,
+                ReferenceType.ESCROW,
+                escrowTransactionId
+        );
+
+        walletRepository.save(buyerWallet);
+
+        walletRepository.save(sellerWallet);
+
+        return new BuyerAndSellerBalanceResponse(buyerWallet.getAvailableBalance(), sellerWallet.getAvailableBalance());
+    }
+
+    @Transactional
+    @Override
+    public void creditDriver(DeliveryCompletedEventDto deliveryCompletedEventDto) {
+
+        try {
+
+            Wallet driverWallet = walletRepository
+                    .findByUserId(deliveryCompletedEventDto.driverUserId())
+                    .orElseThrow(() -> new ApplicationException(
+                            "Wallet not found for driver with user ID: " + deliveryCompletedEventDto.driverUserId(),
+                            HttpStatus.BAD_REQUEST)
+                    );
+
+            Wallet buyerWallet = walletRepository
+                    .findByUserId(deliveryCompletedEventDto.buyerUserId())
+                    .orElseThrow(() -> new ApplicationException(
+                            "Wallet not found for buyer with user ID: " + deliveryCompletedEventDto.buyerUserId(),
+                            HttpStatus.BAD_REQUEST)
+                    );
+
+            BigDecimal buyerLockedBalanceBeforeRelease = buyerWallet.getLockedBalance();
+
+            if (buyerLockedBalanceBeforeRelease.compareTo(deliveryCompletedEventDto.deliveryFee()) < 0) {
+
+                log.error("Buyer with user ID: {} has insufficient locked balance to release for delivery fee. Locked Balance: {}, Delivery Fee: {}",
+                        deliveryCompletedEventDto.buyerUserId(), buyerLockedBalanceBeforeRelease, deliveryCompletedEventDto.deliveryFee());
+
+                throw new ApplicationException(
+                        "Buyer has insufficient locked balance to release for delivery fee.",
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+
+            buyerWallet.setLockedBalance(buyerLockedBalanceBeforeRelease.subtract(deliveryCompletedEventDto.deliveryFee()));
+
+            walletLedgerService.saveLedgerEntry(
+                    buyerWallet,
+                    deliveryCompletedEventDto.deliveryFee(),
+                    LedgerEntryType.DEBIT,
+                    ReferenceType.DELIVERY,
+                    deliveryCompletedEventDto.orderId()
+            );
+
+            BigDecimal driverAvailableBalanceBeforeCredit = driverWallet.getAvailableBalance();
+
+            driverWallet.setAvailableBalance(driverAvailableBalanceBeforeCredit.add(deliveryCompletedEventDto.deliveryFee()));
+
+            walletLedgerService.saveLedgerEntry(
+                    driverWallet,
+                    deliveryCompletedEventDto.deliveryFee(),
+                    LedgerEntryType.CREDIT,
+                    ReferenceType.DELIVERY,
+                    deliveryCompletedEventDto.orderId()
+            );
+
+            DriverWalletCreditNotificationEventDto driverWalletCreditNotificationEventDto = new DriverWalletCreditNotificationEventDto(
+                    deliveryCompletedEventDto.driverUserId(),
+                    deliveryCompletedEventDto.buyerUserId(),
+                    deliveryCompletedEventDto.driverEmail(),
+                    deliveryCompletedEventDto.orderReferenceNumber(),
+                    deliveryCompletedEventDto.deliveryFee(),
+                    driverWallet.getAvailableBalance(),
+                    buyerWallet.getLockedBalance()
+            );
+
+            outboxEventService.saveEvent(
+                    deliveryCompletedEventDto.driverUserId().toString(),
+                    DRIVER_WALLET_CREDIT_NOTIFICATION_EVENT_TYPE,
+                    DRIVER_WALLET_CREDIT_NOTIFICATION_KAFKA_BINDING,
+                    driverWalletCreditNotificationEventDto,
+                    deliveryCompletedEventDto.clientRequestKey()
+            );
+
+            walletRepository.save(driverWallet);
+
+            walletRepository.save(buyerWallet);
+
+        } catch (Exception ex) {
+
+            log.error("Error crediting driver wallet for driver with user ID: {}", deliveryCompletedEventDto.driverUserId(), ex);
+
+            throw ex;
+
+        }
+    }
+
+    @Override
+    public ApiResponse<BigDecimal> getWalletBalance() {
+
+        UserIdentifier userIdentifier = authenticatedUserProvider.getCurrentLoggedInUser();
+
+        Optional<Wallet> optionalWallet = walletRepository.findByUserId(UUID.fromString(userIdentifier.userId()));
+
+        if (optionalWallet.isEmpty()) {
+
+            log.warn("Wallet not found for user with user ID: {}", userIdentifier.userId());
+
+            return ApiResponse.error("Wallet not found for the current user");
+        }
+
+        BigDecimal availableBalance = optionalWallet.get().getAvailableBalance();
+
+        return ApiResponse.success("Balance fetched successfully.", availableBalance);
+
     }
 }

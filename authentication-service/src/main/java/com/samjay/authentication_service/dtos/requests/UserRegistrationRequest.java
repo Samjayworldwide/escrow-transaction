@@ -38,4 +38,7 @@ public class UserRegistrationRequest {
 
     @NotNull(message = "Role is required")
     private Roles role;
+
+    @NotNull(message = "Device information is required")
+    private DeviceInformationRequest deviceInformationRequest;
 }

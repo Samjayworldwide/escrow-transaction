@@ -20,7 +20,6 @@ public class EmailFunction {
 
     private final EmailService emailService;
 
-
     @Bean
     public Consumer<EmailVerificationEventDto> sendEmailVerificationMail() {
 
@@ -279,6 +278,220 @@ public class EmailFunction {
             } catch (Exception e) {
 
                 log.error("Failed to process payment confirmation email for: {} — {}", paymentCompletionRecordDto.sellerEmail(), e.getMessage(), e);
+
+                throw e;
+            }
+        };
+    }
+
+    @Bean
+    public Consumer<EscrowReleaseCompletedEventDto> sendEscrowReleaseMailToBuyer() {
+
+        return escrowReleaseCompletedEventDto -> {
+
+            try {
+
+                String mailBody = AppExtensions.getEscrowReleaseMailBody(
+                        escrowReleaseCompletedEventDto.orderReferenceNumber(),
+                        escrowReleaseCompletedEventDto.amount().toPlainString(),
+                        escrowReleaseCompletedEventDto.buyerAvailableBalance().toPlainString(),
+                        escrowReleaseCompletedEventDto.sellerAvailableBalance().toPlainString(),
+                        true
+                );
+
+                EmailRequestDto buyerEmailRequestDto = EmailRequestDto
+                        .builder()
+                        .recipient(escrowReleaseCompletedEventDto.buyerEmail())
+                        .subject("Escrow Release Completed. You have been debited")
+                        .messageBody(mailBody)
+                        .build();
+
+                log.info("Sending escrow release confirmation email to: {} for order reference number: {}",
+                        escrowReleaseCompletedEventDto.buyerEmail(),
+                        escrowReleaseCompletedEventDto.orderReferenceNumber()
+                );
+
+                emailService.sendEmail(buyerEmailRequestDto);
+
+                log.info("Escrow release confirmation email sent to: {} for order reference number: {}",
+                        escrowReleaseCompletedEventDto.buyerEmail(),
+                        escrowReleaseCompletedEventDto.orderReferenceNumber()
+                );
+
+            } catch (Exception e) {
+
+                log.error("Failed to process escrow release confirmation email for: {} — {}", escrowReleaseCompletedEventDto.buyerEmail(), e.getMessage(), e);
+
+                throw e;
+            }
+        };
+    }
+
+    @Bean
+    public Consumer<EmailDeliveryAcceptanceEventDto> sendMailToBuyerAfterDriverAcceptsDelivery() {
+
+        return emailDeliveryAcceptanceEventDto -> {
+
+            try {
+
+                String mailBody = AppExtensions.getEmailDeliveryAcceptanceMailBody(
+                        emailDeliveryAcceptanceEventDto.driverFirstname(),
+                        emailDeliveryAcceptanceEventDto.driverLastname(),
+                        emailDeliveryAcceptanceEventDto.driverPhoneNumber(),
+                        emailDeliveryAcceptanceEventDto.vehicleLicenseNumber(),
+                        emailDeliveryAcceptanceEventDto.pickupDeliveryCode(),
+                        emailDeliveryAcceptanceEventDto.dropoffDeliveryCode(),
+                        emailDeliveryAcceptanceEventDto.orderReferenceNumber(),
+                        true
+                );
+
+                EmailRequestDto buyerEmailRequestDto = EmailRequestDto
+                        .builder()
+                        .recipient(emailDeliveryAcceptanceEventDto.buyerEmail())
+                        .subject("Your delivery has been accepted by a driver")
+                        .messageBody(mailBody)
+                        .build();
+
+                log.info("Sending delivery acceptance email to buyer: {} for order reference number: {}",
+                        emailDeliveryAcceptanceEventDto.buyerEmail(), emailDeliveryAcceptanceEventDto.orderReferenceNumber());
+
+                emailService.sendEmail(buyerEmailRequestDto);
+
+                log.info("Delivery acceptance email sent to buyer: {} for order reference number: {}",
+                        emailDeliveryAcceptanceEventDto.buyerEmail(), emailDeliveryAcceptanceEventDto.orderReferenceNumber());
+
+            } catch (Exception ex) {
+
+                log.error("Failed to process delivery acceptance email for buyer with email: {} and driver with phone number: {} — {}",
+                        emailDeliveryAcceptanceEventDto.buyerEmail(), emailDeliveryAcceptanceEventDto.driverPhoneNumber(), ex.getMessage(), ex);
+
+                throw ex;
+            }
+        };
+    }
+
+    @Bean
+    public Consumer<EmailDeliveryAcceptanceEventDto> sendMailToSellerAfterDriverAcceptsDelivery() {
+
+        return emailDeliveryAcceptanceEventDto -> {
+
+            try {
+
+                String mailBody = AppExtensions.getEmailDeliveryAcceptanceMailBody(
+                        emailDeliveryAcceptanceEventDto.driverFirstname(),
+                        emailDeliveryAcceptanceEventDto.driverLastname(),
+                        emailDeliveryAcceptanceEventDto.driverPhoneNumber(),
+                        emailDeliveryAcceptanceEventDto.vehicleLicenseNumber(),
+                        emailDeliveryAcceptanceEventDto.pickupDeliveryCode(),
+                        emailDeliveryAcceptanceEventDto.dropoffDeliveryCode(),
+                        emailDeliveryAcceptanceEventDto.orderReferenceNumber(),
+                        false
+                );
+
+                EmailRequestDto sellerEmailRequestDto = EmailRequestDto
+                        .builder()
+                        .recipient(emailDeliveryAcceptanceEventDto.sellerEmail())
+                        .subject("Your delivery has been accepted by a driver")
+                        .messageBody(mailBody)
+                        .build();
+
+                log.info("Sending delivery acceptance email to seller: {} for order reference number: {}",
+                        emailDeliveryAcceptanceEventDto.sellerEmail(), emailDeliveryAcceptanceEventDto.orderReferenceNumber());
+
+                emailService.sendEmail(sellerEmailRequestDto);
+
+                log.info("Delivery acceptance email sent to seller: {} for order reference number: {}",
+                        emailDeliveryAcceptanceEventDto.sellerEmail(), emailDeliveryAcceptanceEventDto.orderReferenceNumber());
+
+            } catch (Exception ex) {
+
+                log.error("Failed to process delivery acceptance email for seller with email: {} and driver with phone number: {} — {}",
+                        emailDeliveryAcceptanceEventDto.sellerEmail(), emailDeliveryAcceptanceEventDto.driverPhoneNumber(), ex.getMessage(), ex);
+
+                throw ex;
+            }
+        };
+    }
+
+    @Bean
+    public Consumer<EscrowReleaseCompletedEventDto> sendEscrowReleaseMailToSeller() {
+
+        return escrowReleaseCompletedEventDto -> {
+
+            try {
+
+                String mailBody = AppExtensions.getEscrowReleaseMailBody(
+                        escrowReleaseCompletedEventDto.orderReferenceNumber(),
+                        escrowReleaseCompletedEventDto.amount().toPlainString(),
+                        escrowReleaseCompletedEventDto.buyerAvailableBalance().toPlainString(),
+                        escrowReleaseCompletedEventDto.sellerAvailableBalance().toPlainString(),
+                        false
+                );
+
+                EmailRequestDto emailRequestDto = EmailRequestDto
+                        .builder()
+                        .recipient(escrowReleaseCompletedEventDto.sellerEmail())
+                        .subject("Escrow Release Completed. You have been credited")
+                        .messageBody(mailBody)
+                        .build();
+
+                log.info("Sending escrow release confirmation email to: {} for order reference number: {}",
+                        escrowReleaseCompletedEventDto.sellerEmail(),
+                        escrowReleaseCompletedEventDto.orderReferenceNumber()
+                );
+
+                emailService.sendEmail(emailRequestDto);
+
+                log.info("Escrow release confirmation email sent to: {} for order reference number: {}",
+                        escrowReleaseCompletedEventDto.sellerEmail(),
+                        escrowReleaseCompletedEventDto.orderReferenceNumber()
+                );
+
+            } catch (Exception e) {
+
+                log.error("Failed to process escrow release confirmation email for: {} — {}", escrowReleaseCompletedEventDto.sellerEmail(), e.getMessage(), e);
+
+                throw e;
+            }
+        };
+    }
+
+    @Bean
+    public Consumer<DriverWalletCreditNotification> sendEmailToDriverAfterWalletCredit() {
+
+        return driverWalletCreditNotification -> {
+
+            try {
+
+                String mailBody = AppExtensions.getDriverWalletCreditMailBody(
+                        driverWalletCreditNotification.amount().toPlainString(),
+                        driverWalletCreditNotification.availableBalance().toPlainString(),
+                        driverWalletCreditNotification.orderReferenceNumber()
+                );
+
+                EmailRequestDto emailRequestDto = EmailRequestDto
+                        .builder()
+                        .recipient(driverWalletCreditNotification.driverEmail())
+                        .subject("Your wallet has been credited")
+                        .messageBody(mailBody)
+                        .build();
+
+                log.info("Sending wallet credit notification email to driver: {} for order reference number: {}",
+                        driverWalletCreditNotification.driverEmail(),
+                        driverWalletCreditNotification.orderReferenceNumber()
+                );
+
+                emailService.sendEmail(emailRequestDto);
+
+                log.info("Wallet credit notification email sent to driver: {} for order reference number: {}",
+                        driverWalletCreditNotification.driverEmail(),
+                        driverWalletCreditNotification.orderReferenceNumber()
+                );
+
+            } catch (Exception e) {
+
+                log.error("Failed to process wallet credit notification email for driver: {} — {}",
+                        driverWalletCreditNotification.driverEmail(), e.getMessage(), e);
 
                 throw e;
             }

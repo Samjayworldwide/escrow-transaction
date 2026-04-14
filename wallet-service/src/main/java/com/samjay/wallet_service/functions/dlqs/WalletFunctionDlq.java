@@ -1,5 +1,7 @@
 package com.samjay.wallet_service.functions.dlqs;
 
+import com.samjay.wallet_service.dtos.events.DeliveryCompletedEventDto;
+import com.samjay.wallet_service.dtos.events.OrderSettlementEventDto;
 import com.samjay.wallet_service.dtos.events.PaymentCompletionEventDto;
 import com.samjay.wallet_service.dtos.events.UserRegisteredEventDto;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,24 @@ public class WalletFunctionDlq {
 
     @Bean
     public Consumer<PaymentCompletionEventDto> creditWalletOnPaymentCompletionDlq() {
+
+        return failedRecord -> log.error(
+                "Message landed in DLQ — manual intervention required for order ID: {}",
+                failedRecord.orderId()
+        );
+    }
+
+    @Bean
+    public Consumer<OrderSettlementEventDto> releasePaymentOnOrderSettlementDlq() {
+
+        return failedRecord -> log.error(
+                "Message landed in DLQ — manual intervention required for order ID: {}",
+                failedRecord.orderId()
+        );
+    }
+
+    @Bean
+    public Consumer<DeliveryCompletedEventDto> creditDriverOnDeliveryCompletionDlq() {
 
         return failedRecord -> log.error(
                 "Message landed in DLQ — manual intervention required for order ID: {}",

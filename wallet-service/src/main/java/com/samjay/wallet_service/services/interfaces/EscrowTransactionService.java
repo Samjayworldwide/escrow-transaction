@@ -1,9 +1,11 @@
 package com.samjay.wallet_service.services.interfaces;
 
+import com.samjay.wallet_service.dtos.events.OrderSettlementEventDto;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 
 public interface EscrowTransactionService {
 
-    void saveEscrowTransaction(UUID buyerWalletId, UUID sellerWalletId, UUID orderId, BigDecimal amount);
+    void releaseEscrow(OrderSettlementEventDto orderSettlementEventDto);
 }

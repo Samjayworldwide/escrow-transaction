@@ -1,5 +1,6 @@
 package com.samjay.authentication_service.services.implementations;
 
+import com.samjay.authentication_service.dtos.events.DeviceInformationEventDto;
 import com.samjay.authentication_service.dtos.events.UserRegisteredEventDto;
 import com.samjay.authentication_service.dtos.requests.UserLoginRequest;
 import com.samjay.authentication_service.dtos.requests.UserRegistrationRequest;
@@ -28,8 +29,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.samjay.authentication_service.utils.AppExtensions.generateHash;
-import static com.samjay.authentication_service.utils.AppExtensions.serialize;
+import static com.samjay.authentication_service.utils.AppExtensions.*;
 
 @Service
 @RequiredArgsConstructor
@@ -144,6 +144,23 @@ public class AuthenticationServiceImplementation implements AuthenticationServic
                 clientRequestKey
         );
 
+        DeviceInformationEventDto deviceInformationEventDto = new DeviceInformationEventDto(
+                id,
+                userRegistrationRequest.getDeviceInformationRequest().getDeviceImei(),
+                userRegistrationRequest.getDeviceInformationRequest().getFirebaseToken(),
+                userRegistrationRequest.getDeviceInformationRequest().getDeviceModel(),
+                userRegistrationRequest.getDeviceInformationRequest().getOsVersion(),
+                userRegistrationRequest.getDeviceInformationRequest().getDevicePlatform()
+        );
+
+        outboxEventService.saveEvent(
+                id.toString(),
+                DEVICE_INFO_EVENT_TYPE,
+                DEVICE_INFO_KAFKA_BINDING,
+                deviceInformationEventDto,
+                clientRequestKey
+        );
+
         idempotencyService.markKeyAsSuccess(
                 clientRequestKey,
                 AppExtensions.USER_REGISTERED_EVENT_TYPE,
@@ -209,6 +226,23 @@ public class AuthenticationServiceImplementation implements AuthenticationServic
         LoginResponse loginResponse = new LoginResponse(user.getUsername(), jwtToken, LocalDateTime.now());
 
         userRepository.save(user);
+
+        DeviceInformationEventDto deviceInformationEventDto = new DeviceInformationEventDto(
+                user.getId(),
+                userLoginRequest.getDeviceInformationRequest().getDeviceImei(),
+                userLoginRequest.getDeviceInformationRequest().getFirebaseToken(),
+                userLoginRequest.getDeviceInformationRequest().getDeviceModel(),
+                userLoginRequest.getDeviceInformationRequest().getOsVersion(),
+                userLoginRequest.getDeviceInformationRequest().getDevicePlatform()
+        );
+
+        outboxEventService.saveEvent(
+                user.getId().toString(),
+                DEVICE_INFO_EVENT_TYPE,
+                DEVICE_INFO_KAFKA_BINDING,
+                deviceInformationEventDto,
+                user.getId() + ":" + user.getEmail()
+        );
 
         return ApiResponse.success("Login successful", loginResponse);
 

@@ -6,6 +6,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -20,9 +22,10 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/driver/complete-profile").hasAuthority("DRIVER")
+                        .requestMatchers("/api/driver/**").hasAuthority("DRIVER")
                         .requestMatchers("/api/driver/document/sas-urls").hasAuthority("DRIVER")
                         .requestMatchers("/api/driver/document/confirm-upload").hasAuthority("DRIVER")
+                        .requestMatchers("/api/driver-tasks/**").hasAuthority("DRIVER")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
@@ -30,6 +33,7 @@ public class SecurityConfiguration {
                 );
 
         return http.build();
+
     }
 
     @Bean
@@ -46,5 +50,13 @@ public class SecurityConfiguration {
         converter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
 
         return converter;
+
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+
+        return new BCryptPasswordEncoder();
+
     }
 }

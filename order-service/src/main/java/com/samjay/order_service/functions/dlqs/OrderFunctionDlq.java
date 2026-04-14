@@ -1,5 +1,7 @@
 package com.samjay.order_service.functions.dlqs;
 
+import com.samjay.order_service.dtos.events.OrderDeliveryUpdateEventDto;
+import com.samjay.order_service.dtos.events.OrderTrackingStageUpdateEventDto;
 import com.samjay.order_service.dtos.events.PaymentVerificationEventDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -11,17 +13,35 @@ import java.util.function.Consumer;
 @Slf4j
 public class OrderFunctionDlq {
 
+    // Here you can implement any additional logic for handling the failed message,
+    // such as sending notifications, alerting, or storing the message for further analysis.
+
     @Bean
     public Consumer<PaymentVerificationEventDto> updateOrderAfterPaymentVerificationDlq() {
 
-        return paymentVerificationEventDto -> {
+        return paymentVerificationEventDto -> log.error(
+                "Received message in DLQ for order ID: {}",
+                paymentVerificationEventDto.orderId()
+        );
 
-            log.error("Received message in DLQ for order ID: {}", paymentVerificationEventDto.orderId());
+    }
 
-            log.error("Message details: {}", paymentVerificationEventDto);
+    @Bean
+    public Consumer<OrderDeliveryUpdateEventDto> updateOrderAfterAssignedToDriverDlq() {
 
-            // Here you can implement any additional logic for handling the failed message,
-            // such as sending notifications, alerting, or storing the message for further analysis.
-        };
+        return orderDeliveryUpdateEventDto -> log.error(
+                "Received message in DLQ for order ID: {}", orderDeliveryUpdateEventDto.orderId()
+        );
+
+    }
+
+    @Bean
+    public Consumer<OrderTrackingStageUpdateEventDto> updateOrderTrackingStageDlq() {
+
+        return orderTrackingStageUpdateEventDto -> log.error(
+                "Received message in DLQ for order ID: {}",
+                orderTrackingStageUpdateEventDto.orderId()
+        );
+
     }
 }

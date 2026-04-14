@@ -2,9 +2,7 @@ package com.samjay.order_service.services.implementations;
 
 import com.samjay.ValidateAndFetchCustomerUsernameResponse;
 import com.samjay.order_service.configurations.AuthenticatedUserProvider;
-import com.samjay.order_service.dtos.events.OrderApprovalEventDto;
-import com.samjay.order_service.dtos.events.PaymentCompletionEventDto;
-import com.samjay.order_service.dtos.events.PaymentVerificationEventDto;
+import com.samjay.order_service.dtos.events.*;
 import com.samjay.order_service.dtos.requests.ItemDetailsRequest;
 import com.samjay.order_service.dtos.requests.OrderApprovalRequest;
 import com.samjay.order_service.dtos.requests.OrderCreationRequest;
@@ -13,9 +11,7 @@ import com.samjay.order_service.entities.ItemDetails;
 import com.samjay.order_service.entities.Order;
 import com.samjay.order_service.entities.OrderDeliveryInformation;
 import com.samjay.order_service.entities.OrderParticipantInformation;
-import com.samjay.order_service.enumerations.OrderCreator;
-import com.samjay.order_service.enumerations.OrderStatus;
-import com.samjay.order_service.enumerations.PaymentStatus;
+import com.samjay.order_service.enumerations.*;
 import com.samjay.order_service.exceptions.ApplicationException;
 import com.samjay.order_service.repositories.OrderRepository;
 import com.samjay.order_service.services.grpcservice.CustomerGrpcService;
@@ -27,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -283,6 +280,7 @@ public class OrderServiceImplementation implements OrderService {
             default -> {
 
                 return ApiResponse.error("Invalid order creator type. The order creator must be either BUYER or SELLER.");
+
             }
         }
 
@@ -290,7 +288,7 @@ public class OrderServiceImplementation implements OrderService {
 
         deliveryInformation.setEstimatedDeliveryTime(distanceAndDurationResponseApiResponse.getResponseBody().duration());
 
-        deliveryInformation.setDeliveryFee(100 * distanceAndDurationResponseApiResponse.getResponseBody().distance());
+        deliveryInformation.setDeliveryFee(BigDecimal.valueOf(100.0 * distanceAndDurationResponseApiResponse.getResponseBody().distance()));
 
         order.setOrderStatus(OrderStatus.APPROVED);
 
@@ -311,9 +309,40 @@ public class OrderServiceImplementation implements OrderService {
         return ApiResponse.success("Order approved successfully.");
     }
 
+    @Transactional
     @Override
-    public ApiResponse<String> rejectOrder(UUID orderId, String clientRequestKey) {
-        return null;
+    public ApiResponse<String> cancelOrder(UUID orderId) {
+
+        UserIdentifier userIdentifier = authenticatedUserProvider.getCurrentLoggedInUser();
+
+        Optional<Order> optionalOrder = orderRepository.findById(orderId);
+
+        if (optionalOrder.isEmpty())
+            return ApiResponse.error("Order not found with the provided ID.");
+
+        Order order = optionalOrder.get();
+
+        boolean isCreator = userIdentifier.userId().equals(order.getCreatorUserId().toString());
+
+        if (!isCreator)
+            return ApiResponse.error("This order cannot be cancelled because the authenticated user is not the creator of the order.");
+
+        boolean isOrderAlreadyCancelled = order.getOrderStatus() == OrderStatus.CANCELLED;
+
+        if (isOrderAlreadyCancelled)
+            return ApiResponse.success("The order is already cancelled.");
+
+        boolean isOrderNotEligibleForCancellation = order.getOrderStatus() != OrderStatus.UNAPPROVED &&
+                order.getPaymentStatus() == PaymentStatus.PAID;
+
+        if (isOrderNotEligibleForCancellation)
+            return ApiResponse.error("The order cannot be cancelled because it has already been approved and paid for. Please contact support for further assistance.");
+
+        order.setOrderStatus(OrderStatus.CANCELLED);
+
+        orderRepository.save(order);
+
+        return ApiResponse.success("Order cancelled successfully.");
     }
 
     @Transactional
@@ -349,7 +378,7 @@ public class OrderServiceImplementation implements OrderService {
                     UUID.fromString(savedOrder.getParticipantInformation().getSellerUserId()),
                     savedOrder.getDeliveryInformation().getPickupAddressLatitude(),
                     savedOrder.getDeliveryInformation().getPickupAddressLongitude(),
-                    savedOrder.getDeliveryInformation().getDeliveryFee(),
+                    savedOrder.getDeliveryInformation().getDeliveryFee().doubleValue(),
                     savedOrder.getParticipantInformation().getPickupAddress() + ", " + savedOrder.getParticipantInformation().getPickupState(),
                     savedOrder.getParticipantInformation().getDropOffAddress() + ", " + savedOrder.getParticipantInformation().getDropOffState(),
                     savedOrder.getOrderReferenceNumber(),
@@ -373,6 +402,167 @@ public class OrderServiceImplementation implements OrderService {
 
             throw e;
         }
+    }
+
+    @Transactional
+    @Override
+    public void updateOrderStatusAfterAssignedToDriver(OrderDeliveryUpdateEventDto orderDeliveryUpdateEventDto) {
+
+        try {
+
+            Order order = orderRepository
+                    .findByIdWithDeliveryInfo(orderDeliveryUpdateEventDto.orderId())
+                    .orElseThrow(() -> new ApplicationException(
+                            "Order not found for ID: " + orderDeliveryUpdateEventDto.orderId(),
+                            HttpStatus.BAD_REQUEST)
+                    );
+
+            OrderDeliveryInformation deliveryInformation = order.getDeliveryInformation();
+
+            if (deliveryInformation.getDriverUserId() != null || deliveryInformation.getOrderDeliveryStatus() == OrderDeliveryStatus.ACCEPTED_BY_DRIVER) {
+
+                log.warn("Order with ID {} already has a driver assigned. Current driver user ID: {}. Skipping update.", order.getId(), deliveryInformation.getDriverUserId());
+
+                return;
+
+            }
+
+            if (order.getOrderStatus() != OrderStatus.IN_PROGRESS || order.getPaymentStatus() != PaymentStatus.PAID) {
+
+                log.warn(
+                        "Order with ID {} is not in IN_PROGRESS or PAID status. Current status: {} Current Payment Status: {}. Skipping update.",
+                        order.getId(),
+                        order.getOrderStatus(),
+                        order.getPaymentStatus()
+                );
+
+                return;
+
+            }
+
+            order.setOrderStatus(OrderStatus.ACCEPTED_FOR_DELIVERY);
+
+            deliveryInformation.setDriverUserId(orderDeliveryUpdateEventDto.driverUserId());
+
+            deliveryInformation.setDriverPhoneNumber(orderDeliveryUpdateEventDto.driverPhoneNumber());
+
+            deliveryInformation.setOrderDeliveryStatus(OrderDeliveryStatus.ACCEPTED_BY_DRIVER);
+
+            deliveryInformation.setDeliveryAcceptedAt(LocalDateTime.now());
+
+            orderRepository.save(order);
+
+        } catch (Exception e) {
+
+            log.error("Error updating order status after assignment to driver for order ID {}: {}", orderDeliveryUpdateEventDto.orderId(), e.getMessage(), e);
+
+            throw e;
+
+        }
+    }
+
+    @Transactional
+    @Override
+    public void updateOrderTrackingStage(OrderTrackingStageUpdateEventDto orderTrackingStageUpdateEventDto) {
+
+        try {
+
+            Order order = orderRepository
+                    .findOrderByIdWithDeliveryInformationAndParticipantInformation(orderTrackingStageUpdateEventDto.orderId())
+                    .orElseThrow(() -> new ApplicationException(
+                            "Order not found for ID: " + orderTrackingStageUpdateEventDto.orderId(),
+                            HttpStatus.BAD_REQUEST)
+                    );
+
+            order.setTrackingStage(orderTrackingStageUpdateEventDto.trackingStage());
+
+            if (orderTrackingStageUpdateEventDto.trackingStage() == TrackingStage.DELIVERED_TO_BUYER_ADDRESS) {
+
+
+                OrderDeliveryInformation deliveryInformation = order.getDeliveryInformation();
+
+                deliveryInformation.setDeliveredAt(LocalDateTime.now());
+
+                order.setOrderStatus(OrderStatus.DELIVERED);
+
+            }
+
+            orderRepository.save(order);
+
+        } catch (Exception e) {
+
+            log.error("Error updating order tracking stage for order ID {}: {}", orderTrackingStageUpdateEventDto.orderId(), e.getMessage(), e);
+
+            throw e;
+
+        }
+    }
+
+    @Transactional
+    @Override
+    public ApiResponse<String> settleOrder(String clientRequestKey, UUID orderId) {
+
+        UserIdentifier userIdentifier = authenticatedUserProvider.getCurrentLoggedInUser();
+
+        Optional<Order> optionalOrder = orderRepository.findByIdWithParticipantInformation(orderId);
+
+        if (optionalOrder.isEmpty())
+            return ApiResponse.error("Order not found with the provided ID.");
+
+        Order order = optionalOrder.get();
+
+        if (!userIdentifier.userId().equals(order.getParticipantInformation().getBuyerUserId()))
+            return ApiResponse.error("Only the buyer can complete the order.");
+
+        if (order.getPaymentStatus() != PaymentStatus.PAID)
+            return ApiResponse.error("Only orders with PAID payment status can be completed.");
+
+        if (order.getOrderStatus() != OrderStatus.DELIVERED)
+            return ApiResponse.error("Only orders that have been delivered can be completed.");
+
+        if (order.getTrackingStage() != TrackingStage.DELIVERED_TO_BUYER_ADDRESS)
+            return ApiResponse.error("Only orders that have been delivered to the buyer's address can be completed.");
+
+        if (order.getOrderStatus() == OrderStatus.SETTLED)
+            return ApiResponse.error("The order is already settled.");
+
+        order.setOrderStatus(OrderStatus.SETTLED);
+
+        orderRepository.save(order);
+
+        OrderSettlementEventDto orderSettlementEventDto = new OrderSettlementEventDto(
+                orderId,
+                UUID.fromString(order.getParticipantInformation().getBuyerUserId()),
+                UUID.fromString(order.getParticipantInformation().getSellerUserId()),
+                order.getParticipantInformation().getBuyerEmail(),
+                order.getParticipantInformation().getSellerEmail(),
+                order.getOrderReferenceNumber(),
+                clientRequestKey
+        );
+
+        outboxEventService.saveEvent(
+                userIdentifier.userId(),
+                ORDER_SETTLEMENT_EVENT_TYPE,
+                ORDER_SETTLEMENT_KAFKA_BINDING,
+                orderSettlementEventDto,
+                clientRequestKey
+        );
+
+        return ApiResponse.success("The settlement process has been initiated and the funds will be released to the seller shortly.");
+
+    }
+
+    @Override
+    public ApiResponse<String> getOrderTrackingStage(UUID orderId) {
+
+        Optional<Order> optionalOrder = orderRepository.findById(orderId);
+
+        if (optionalOrder.isEmpty())
+            return ApiResponse.error("Order not found with the provided ID.");
+
+        Order order = optionalOrder.get();
+
+        return ApiResponse.success("Order tracking stage fetched successfully.", order.getTrackingStage().name());
     }
 
     private String generateOrderReferenceNumber() {

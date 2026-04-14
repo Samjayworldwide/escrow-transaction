@@ -1,5 +1,6 @@
 package com.samjay.driver_service.entities;
 
+import com.samjay.driver_service.enumerations.DriverStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,12 +14,10 @@ import java.util.UUID;
 
 @Entity
 @Table(
-        indexes = {
-                @Index(name = "idx_driver_userId", columnList = "userId"),
-        },
-
         uniqueConstraints = {
+
                 @UniqueConstraint(name = "uq_driver_userId", columnNames = "userId")
+
         }
 )
 @Data
@@ -60,6 +59,9 @@ public class Driver {
     @Column(nullable = false)
     private boolean isDocumentVerified;
 
+    @Enumerated(EnumType.STRING)
+    private DriverStatus driverStatus;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -68,6 +70,10 @@ public class Driver {
     @OneToMany(mappedBy = "driver", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<DriverDocument> documents = new ArrayList<>();
+
+    @OneToMany(mappedBy = "driver", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<DriverTask> driverTasks = new ArrayList<>();
 
     public void addDocument(DriverDocument document) {
 
@@ -83,12 +89,28 @@ public class Driver {
         document.setDriver(null);
     }
 
+    public void addDriverTask(DriverTask driverTask) {
+
+        this.driverTasks.add(driverTask);
+
+        driverTask.setDriver(this);
+    }
+
+    public void removeDriverTask(DriverTask driverTask) {
+
+        this.driverTasks.remove(driverTask);
+
+        driverTask.setDriver(null);
+    }
+
     @PrePersist
     public void prePersist() {
 
         this.createdAt = LocalDateTime.now();
 
         this.isDocumentVerified = false;
+
+        this.driverStatus = DriverStatus.AVAILABLE;
     }
 
     @PreUpdate

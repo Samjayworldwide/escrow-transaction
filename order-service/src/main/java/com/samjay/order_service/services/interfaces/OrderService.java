@@ -1,5 +1,7 @@
 package com.samjay.order_service.services.interfaces;
 
+import com.samjay.order_service.dtos.events.OrderDeliveryUpdateEventDto;
+import com.samjay.order_service.dtos.events.OrderTrackingStageUpdateEventDto;
 import com.samjay.order_service.dtos.events.PaymentVerificationEventDto;
 import com.samjay.order_service.dtos.requests.OrderApprovalRequest;
 import com.samjay.order_service.dtos.requests.OrderCreationRequest;
@@ -18,7 +20,16 @@ public interface OrderService {
 
     ApiResponse<String> approveOrder(OrderApprovalRequest orderApprovalRequest, String clientRequestKey);
 
-    ApiResponse<String> rejectOrder(UUID orderId, String clientRequestKey);
+    ApiResponse<String> cancelOrder(UUID orderId);
 
     void updateOrderStatusToPaid(PaymentVerificationEventDto paymentVerificationEventDto);
+
+    void updateOrderStatusAfterAssignedToDriver(OrderDeliveryUpdateEventDto orderDeliveryUpdateEventDto);
+
+    void updateOrderTrackingStage(OrderTrackingStageUpdateEventDto orderTrackingStageUpdateEventDto);
+
+    ApiResponse<String> settleOrder(String clientRequestKey, UUID orderId);
+
+    ApiResponse<String> getOrderTrackingStage(UUID orderId);
+
 }

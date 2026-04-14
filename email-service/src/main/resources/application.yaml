@@ -24,7 +24,7 @@ spring:
               class: javax.net.ssl.SSLSocketFactory
   cloud:
     function:
-      definition: sendEmailVerificationMail;sendEmailVerificationMailDlq;sendOrderCreationMail;sendOrderCreationMailDlq;sendBuyerOrderApprovalMail;sendBuyerOrderApprovalMailDlq;sendSellerOrderApprovalMail;sendSellerOrderApprovalMailDlq;sendPaymentInitializationMail;sendPaymentInitializationMailDlq;sendBuyerPaymentCompletionMail;sendBuyerPaymentCompletionMailDlq;sendSellerPaymentCompletionMail;sendSellerPaymentCompletionMailDlq
+      definition: sendEmailVerificationMail;sendEmailVerificationMailDlq;sendOrderCreationMail;sendOrderCreationMailDlq;sendBuyerOrderApprovalMail;sendBuyerOrderApprovalMailDlq;sendSellerOrderApprovalMail;sendSellerOrderApprovalMailDlq;sendPaymentInitializationMail;sendPaymentInitializationMailDlq;sendBuyerPaymentCompletionMail;sendBuyerPaymentCompletionMailDlq;sendSellerPaymentCompletionMail;sendSellerPaymentCompletionMailDlq;sendEscrowReleaseMailToBuyer;sendEscrowReleaseMailToBuyerDlq;sendEscrowReleaseMailToSeller;sendEscrowReleaseMailToSellerDlq;sendEmailToDriverAfterWalletCredit;sendEmailToDriverAfterWalletCreditDlq;sendMailToBuyerAfterDriverAcceptsDelivery;sendMailToBuyerAfterDriverAcceptsDeliveryDlq;sendMailToSellerAfterDriverAcceptsDelivery;sendMailToSellerAfterDriverAcceptsDeliveryDlq
     stream:
       bindings:
         sendEmailVerificationMail-in-0:
@@ -83,6 +83,46 @@ spring:
             back-off-initial-interval: 1000
             back-off-multiplier: 2.0
             back-off-max-interval: 10000
+        sendEscrowReleaseMailToBuyer-in-0:
+          destination: escrow-release-completed
+          group: ${spring.application.name}-escrow-release-buyer
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendEscrowReleaseMailToSeller-in-0:
+          destination: escrow-release-completed
+          group: ${spring.application.name}-escrow-release-seller
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendEmailToDriverAfterWalletCredit-in-0:
+          destination: driver-wallet-credited
+          group: ${spring.application.name}-wallet-credit-notification
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendMailToBuyerAfterDriverAcceptsDelivery-in-0:
+          destination: email-order-delivery-accepted
+          group: ${spring.application.name}-buyer-delivery-acceptance
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendMailToSellerAfterDriverAcceptsDelivery-in-0:
+          destination: email-order-delivery-accepted
+          group: ${spring.application.name}-seller-delivery-acceptance
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
 
         sendEmailVerificationMailDlq-in-0:
           destination: send-email-verification.DLQ
@@ -105,6 +145,21 @@ spring:
         sendSellerPaymentCompletionMailDlq-in-0:
           destination: seller-payment-completed.DLQ
           group: ${spring.application.name}-seller-payment-completion-dlq
+        sendEscrowReleaseMailToBuyerDlq-in-0:
+          destination: buyer-escrow-release-completed.DLQ
+          group: ${spring.application.name}-escrow-release-buyer-dlq
+        sendEscrowReleaseMailToSellerDlq-in-0:
+          destination: seller-escrow-release-completed.DLQ
+          group: ${spring.application.name}-escrow-release-seller-dlq
+        sendEmailToDriverAfterWalletCreditDlq-in-0:
+          destination: driver-wallet-credited.DLQ
+          group: ${spring.application.name}-wallet-credit-notification-dlq
+        sendMailToBuyerAfterDriverAcceptsDeliveryDlq-in-0:
+          destination: buyer-email-order-delivery-accepted.DLQ
+          group: ${spring.application.name}-buyer-delivery-acceptance-dlq
+        sendMailToSellerAfterDriverAcceptsDeliveryDlq-in-0:
+          destination: seller-email-order-delivery-accepted.DLQ
+          group: ${spring.application.name}-seller-delivery-acceptance-dlq
       kafka:
         binder:
           brokers:
@@ -138,6 +193,26 @@ spring:
             consumer:
               enable-dlq: true
               dlq-name: seller-payment-completed.DLQ
+          sendEscrowReleaseMailToBuyer-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: buyer-escrow-release-completed.DLQ
+          sendEscrowReleaseMailToSeller-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: seller-escrow-release-completed.DLQ
+          sendEmailToDriverAfterWalletCredit-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: driver-wallet-credited.DLQ
+          sendMailToBuyerAfterDriverAcceptsDelivery-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: buyer-email-order-delivery-accepted.DLQ
+          sendMailToSellerAfterDriverAcceptsDelivery-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: seller-email-order-delivery-accepted.DLQ
 
 email:
   username: ${EMAIL_USERNAME}

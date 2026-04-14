@@ -30,6 +30,9 @@ public class Payment {
     private BigDecimal amount;
 
     @Column(nullable = false)
+    private BigDecimal deliveryFee;
+
+    @Column(nullable = false)
     private UUID orderId;
 
     @Column(nullable = false)

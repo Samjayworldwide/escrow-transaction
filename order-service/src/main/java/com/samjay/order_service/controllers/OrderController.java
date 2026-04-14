@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @SuppressWarnings("ALL")
 @RestController
@@ -51,6 +52,31 @@ public class OrderController {
                                                             @Valid @RequestBody OrderApprovalRequest orderApprovalRequest) {
 
         ApiResponse<String> apiResponse = orderService.approveOrder(orderApprovalRequest, clientRequestKey);
+
+        if (!apiResponse.isSuccessful())
+            return ResponseEntity.badRequest().body(apiResponse);
+
+        return ResponseEntity.ok(apiResponse);
+
+    }
+
+    @PostMapping("/cancel")
+    public ResponseEntity<ApiResponse<String>> cancelOrder(@RequestParam UUID orderId) {
+
+        ApiResponse<String> apiResponse = orderService.cancelOrder(orderId);
+
+        if (!apiResponse.isSuccessful())
+            return ResponseEntity.badRequest().body(apiResponse);
+
+        return ResponseEntity.ok(apiResponse);
+
+    }
+
+    @PostMapping("/settle")
+    public ResponseEntity<ApiResponse<String>> settleOrder(@RequestHeader(AppExtensions.CLIENT_REQUEST_KEY_HEADER) String clientRequestKey,
+                                                           @RequestParam UUID orderId) {
+
+        ApiResponse<String> apiResponse = orderService.settleOrder(clientRequestKey, orderId);
 
         if (!apiResponse.isSuccessful())
             return ResponseEntity.badRequest().body(apiResponse);

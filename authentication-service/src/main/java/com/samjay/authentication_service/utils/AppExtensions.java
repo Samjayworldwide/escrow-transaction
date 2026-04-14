@@ -24,6 +24,10 @@ public class AppExtensions {
 
     public static final String CLIENT_REQUEST_KEY_HEADER = "X-Client-Request-Key";
 
+    public static final String DEVICE_INFO_EVENT_TYPE = "DEVICE_INFORMATION";
+
+    public static final String DEVICE_INFO_KAFKA_BINDING = "deviceInfo-out-0";
+
     public static final int MAX_LOGIN_ATTEMPTS = 5;
 
     private static final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();

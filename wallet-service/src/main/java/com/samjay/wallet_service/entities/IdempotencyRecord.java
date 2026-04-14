@@ -11,12 +11,14 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         uniqueConstraints = @UniqueConstraint(
-                name = "uq_idempotency_key_event",
-                columnNames = {"idempotencyKey", "eventType"}
+
+                name = "uq_idempotency_key_event_fingerprint",
+                columnNames = {"idempotencyKey", "eventType", "requestFingerprint"}
         ),
         indexes = {
-                @Index(name = "idx_idempotency_expires_at", columnList = "expiresAt"),
-                @Index(name = "idx_idempotency_aggregate", columnList = "aggregateId, eventType")
+
+                @Index(name = "idx_idempotency_expires_at", columnList = "expiresAt")
+
         }
 )
 @Data

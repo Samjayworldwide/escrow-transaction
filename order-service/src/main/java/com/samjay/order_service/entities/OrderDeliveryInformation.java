@@ -1,11 +1,13 @@
 package com.samjay.order_service.entities;
 
+import com.samjay.order_service.enumerations.OrderDeliveryStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -35,12 +37,19 @@ public class OrderDeliveryInformation {
 
     private UUID driverUserId;
 
-    private double deliveryFee;
+    private BigDecimal deliveryFee;
 
     private String driverPhoneNumber;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    private OrderDeliveryStatus orderDeliveryStatus;
+
+    private LocalDateTime deliveryAcceptedAt;
+
+    private LocalDateTime deliveredAt;
 
     private LocalDateTime updatedAt;
 
@@ -51,4 +60,10 @@ public class OrderDeliveryInformation {
 
     }
 
+    @PreUpdate
+    public void preUpdate() {
+
+        this.updatedAt = LocalDateTime.now();
+
+    }
 }

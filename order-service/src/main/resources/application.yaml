@@ -46,7 +46,7 @@ spring:
           jwk-set-uri: http://localhost:8080/oauth2/jwks
   cloud:
     function:
-      definition: updateOrderAfterPaymentVerification;updateOrderAfterPaymentVerificationDlq
+      definition: updateOrderAfterPaymentVerification;updateOrderAfterPaymentVerificationDlq;updateOrderAfterAssignedToDriver;updateOrderAfterAssignedToDriverDlq;updateOrderTrackingStage;updateOrderTrackingStageDlq
     stream:
       kafka:
         binder:
@@ -65,6 +65,14 @@ spring:
             consumer:
               enable-dlq: true
               dlq-name: update-order-after-payment-verification.DLQ
+          updateOrderAfterAssignedToDriver-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: update-order-after-assigned-to-driver.DLQ
+          updateOrderTrackingStage-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: update-order-tracking-stage.DLQ
       bindings:
         createOrder-out-0:
           destination: order-created
@@ -78,8 +86,28 @@ spring:
           destination: payment-completed
           producer:
             error-channel-enabled: true
+        orderSettlement-out-0:
+          destination: order-settled
+          producer:
+            error-channel-enabled: true
         updateOrderAfterPaymentVerification-in-0:
           destination: payment-verified
+          group: ${spring.application.name}
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        updateOrderAfterAssignedToDriver-in-0:
+          destination: driver-assigned
+          group: ${spring.application.name}
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        updateOrderTrackingStage-in-0:
+          destination: order-tracking-stage-update
           group: ${spring.application.name}
           consumer:
             max-attempts: 3
@@ -89,6 +117,12 @@ spring:
         updateOrderAfterPaymentVerificationDlq-in-0:
           destination: update-order-after-payment-verification.DLQ
           group: ${spring.application.name}-payment-verification-dlq
+        updateOrderAfterAssignedToDriverDlq-in-0:
+          destination: update-order-after-assigned-to-driver.DLQ
+          group: ${spring.application.name}-assigned-to-driver-dlq
+        updateOrderTrackingStageDlq-in-0:
+          destination: update-order-tracking-stage.DLQ
+          group: ${spring.application.name}-tracking-stage-dlq
 
 management:
   endpoints:
