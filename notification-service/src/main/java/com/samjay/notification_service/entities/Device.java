@@ -14,11 +14,9 @@ import java.util.UUID;
 @Table(
         name = "devices",
         indexes = {
-                @Index(name = "idx_device_userId", columnList = "userId"),
-                @Index(name = "idx_device_token", columnList = "firebaseToken")
-        },
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uq_device_token", columnNames = "firebaseToken")
+
+                @Index(name = "idx_device_userId_imei", columnList = "userId, deviceImei")
+
         }
 )
 @Data

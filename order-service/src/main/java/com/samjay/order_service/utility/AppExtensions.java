@@ -33,6 +33,10 @@ public class AppExtensions {
 
     public static final String PAYMENT_COMPLETION_KAFKA_BINDING = "paymentCompletion-out-0";
 
+    public static final String ORDER_SETTLEMENT_EVENT_TYPE = "ORDER_SETTLEMENT";
+
+    public static final String ORDER_SETTLEMENT_KAFKA_BINDING = "orderSettlement-out-0";
+
     public static <T> String serialize(T object) {
 
         try {

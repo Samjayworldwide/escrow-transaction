@@ -47,6 +47,10 @@ spring:
           destination: user-registered
           producer:
             error-channel-enabled: true
+        deviceInfo-out-0:
+          destination: device-info-upsert
+          producer:
+            error-channel-enabled: true
 
 outbox:
   poll:

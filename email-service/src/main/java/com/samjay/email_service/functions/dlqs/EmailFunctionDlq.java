@@ -71,7 +71,52 @@ public class EmailFunctionDlq {
     }
 
     @Bean
+    public Consumer<EmailDeliveryAcceptanceEventDto> sendMailToBuyerAfterDriverAcceptsDeliveryDlq() {
+
+        return failedRecord -> log.error(
+                "Message landed in DLQ — manual intervention required: {}",
+                failedRecord.orderReferenceNumber()
+        );
+    }
+
+    @Bean
+    public Consumer<EmailDeliveryAcceptanceEventDto> sendMailToSellerAfterDriverAcceptsDeliveryDlq() {
+
+        return failedRecord -> log.error(
+                "Message landed in DLQ — manual intervention required: {}",
+                failedRecord.orderReferenceNumber()
+        );
+    }
+
+    @Bean
     public Consumer<PaymentCompletionEventDto> sendSellerPaymentCompletionMailDlq() {
+
+        return failedRecord -> log.error(
+                "Message landed in DLQ — manual intervention required: {}",
+                failedRecord.orderReferenceNumber()
+        );
+    }
+
+    @Bean
+    public Consumer<EscrowReleaseCompletedEventDto> sendEscrowReleaseMailToBuyerDlq() {
+
+        return failedRecord -> log.error(
+                "Message landed in DLQ — manual intervention required: {}",
+                failedRecord.orderReferenceNumber()
+        );
+    }
+
+    @Bean
+    public Consumer<EscrowReleaseCompletedEventDto> sendEscrowReleaseMailToSellerDlq() {
+
+        return failedRecord -> log.error(
+                "Message landed in DLQ — manual intervention required: {}",
+                failedRecord.orderReferenceNumber()
+        );
+    }
+
+    @Bean
+    public Consumer<DriverWalletCreditNotification> sendEmailToDriverAfterWalletCreditDlq() {
 
         return failedRecord -> log.error(
                 "Message landed in DLQ — manual intervention required: {}",

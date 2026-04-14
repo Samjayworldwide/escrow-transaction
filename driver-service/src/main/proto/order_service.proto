@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package orderService;
+
+option java_multiple_files = true;
+
+option java_package = "com.samjay";
+
+option java_outer_classname = "orderServiceProto";
+
+service OrderService {
+
+  rpc GetOrderDetails(OrderDetailsRequest) returns (OrderDetailsResponse);
+
+  rpc GetOrderTrackingStage(OrderTrackingStageRequest) returns (OrderTrackingStageResponse);
+
+  rpc GetOrderDetailsForDriverSearch(OrderDetailsForDriverSearchRequest) returns (OrderDetailsForDriverSearchResponse);
+
+}
+
+message OrderDetailsRequest {
+
+  string orderId = 1;
+
+}
+
+message OrderDetailsResponse {
+
+  bool isFound = 1;
+
+  string orderReferenceNumber = 2;
+
+  string buyerUserId = 3;
+
+  string sellerUserId = 4;
+
+  string pickupAddress = 5;
+
+  string dropOffAddress = 6;
+
+  double deliveryFee = 7;
+
+  string buyerEmail = 8;
+
+  string sellerEmail = 9;
+
+}
+
+message OrderTrackingStageRequest {
+
+  string orderId = 1;
+
+}
+
+message  OrderTrackingStageResponse {
+
+  bool isFound = 1;
+
+  string currentStage = 2;
+
+  string buyerUserId = 4;
+
+  string sellerUserId = 5;
+
+}
+
+message OrderDetailsForDriverSearchRequest {
+
+  string orderId = 1;
+
+}
+
+message OrderDetailsForDriverSearchResponse {
+
+  bool isFound = 1;
+
+  double pickupLatitude = 2;
+
+  double pickupLongitude = 3;
+
+  double deliveryFee = 4;
+
+  string buyerUserId = 5;
+
+  string sellerUserId = 6;
+
+  string pickupAddress = 7;
+
+  string dropOffAddress = 8;
+
+  string orderReferenceNumber = 9;
+
+}

@@ -85,9 +85,14 @@ public class PaymentServiceImplementation implements PaymentService {
         if (!isOrderFound)
             return ApiResponse.error("Order not found for the provided order ID. Please check your order and try again.");
 
-        boolean isOrderApproved = fetchOrderDetailsResponse.getResponseBody().getIsApproved();
+        boolean isOrderAlreadyPaid = fetchOrderDetailsResponse.getResponseBody().getIsOrderAlreadyPaid();
 
-        if (!isOrderApproved)
+        if (isOrderAlreadyPaid)
+            return ApiResponse.error("Payment has already been made for this order. You cannot make payment for the same order twice.");
+
+        boolean isOrderUnApproved = fetchOrderDetailsResponse.getResponseBody().getIsApproved();
+
+        if (isOrderUnApproved)
             return ApiResponse.error("This order is not approved yet. You can only make payment for approved orders. " +
                     "Please wait for your order to be approved before making payment.");
 
@@ -100,7 +105,9 @@ public class PaymentServiceImplementation implements PaymentService {
 
         BigDecimal itemsAmountBigDecimal = BigDecimal.valueOf(totalPriceOfItems);
 
-        if (paymentRequest.getAmount().compareTo(itemsAmountBigDecimal) != 0)
+        BigDecimal totalAmountToPay = paymentRequest.getTotalPriceOfItems().add(paymentRequest.getDeliveryFee());
+
+        if (totalAmountToPay.compareTo(itemsAmountBigDecimal) != 0)
             return ApiResponse.error("Payment amount is invalid. Please pay the right amount for this order");
 
         int idempotencyInsertedRow = idempotencyService.saveKey(
@@ -118,12 +125,12 @@ public class PaymentServiceImplementation implements PaymentService {
 
         UUID paymentId = UUID.randomUUID();
 
-        callbackUrl = callbackUrl + "?clientRequestKey=" + clientRequestKey + "&paymentId=" + paymentId;
+        String generatedCallbackUrl = callbackUrl + "?clientRequestKey=" + clientRequestKey + "&paymentId=" + paymentId;
 
         ApiResponse<PaystackInitializationResponse> response = payStackService.paystackInitialization(
                 userIdentifier.email(),
-                paymentRequest.getAmount(),
-                callbackUrl
+                paymentRequest.getTotalPriceOfItems(),
+                generatedCallbackUrl
         );
 
         if (!response.isSuccessful())
@@ -133,7 +140,8 @@ public class PaymentServiceImplementation implements PaymentService {
 
         int paymentRecordInserted = paymentRepository.insertPaymentRecord(
                 paymentId,
-                paymentRequest.getAmount(),
+                paymentRequest.getTotalPriceOfItems(),
+                paymentRequest.getDeliveryFee(),
                 paymentRequest.getOrderId(),
                 UUID.fromString(userIdentifier.userId()),
                 paystackInitializationResponse.getReference(),
@@ -184,7 +192,7 @@ public class PaymentServiceImplementation implements PaymentService {
                 paymentInitializationResponse
         );
 
-        return ApiResponse.success("Please check your email address to complete payment", paymentInitializationResponse);
+        return ApiResponse.success("Please check your email address to complete payment.", paymentInitializationResponse);
     }
 
     @Transactional
@@ -286,6 +294,9 @@ public class PaymentServiceImplementation implements PaymentService {
 
             if (latestPayment.getTransactionStatus() == TransactionStatus.SUCCESS)
                 return ApiResponse.success("Payment already verified successfully.");
+
+            if (latestPayment.getTransactionStatus() == TransactionStatus.PENDING)
+                return ApiResponse.error("Payment verification is still in progress.");
 
             return ApiResponse.error("Payment verification failed. Please try again later.");
         }

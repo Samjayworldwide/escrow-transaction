@@ -34,4 +34,6 @@ message FetchOrderDetailsResponse {
 
   string orderRefrenceNumber = 5;
 
+  bool isOrderAlreadyPaid = 6;
+
 }

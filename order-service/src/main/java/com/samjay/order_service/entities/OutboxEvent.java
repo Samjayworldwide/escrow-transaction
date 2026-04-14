@@ -79,6 +79,7 @@ public class OutboxEvent {
     protected void onUpdate() {
 
         this.updatedAt = LocalDateTime.now();
+
     }
 
     public void incrementRetry(String errorMessage) {

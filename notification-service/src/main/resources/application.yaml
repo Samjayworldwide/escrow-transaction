@@ -1,3 +1,262 @@
+server:
+  port: 8089
+
 spring:
   application:
     name: notification-service
+  config:
+    import: optional:/Users/mac/escrow_project/notification-service/.env[.properties]
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080
+          jwk-set-uri: http://localhost:8080/oauth2/jwks
+
+  cloud:
+    function:
+      definition: upsertDeviceInformation;upsertDeviceInformationDlq;sendNotificationToBuyerForEmptyDriverSearchResult;sendNotificationToBuyerForEmptyDriverSearchResultDlq;sendNotificationToSellerForEmptyDriverSearchResult;sendNotificationToSellerForEmptyDriverSearchResultDlq;sendOrderDeliveryNotificationToDriver;sendOrderDeliveryNotificationToDriverDlq;sendNotificationToBuyerForDriverAssignment;sendNotificationToBuyerForDriverAssignmentDlq;sendNotificationToSellerForDriverAssignment;sendNotificationToSellerForDriverAssignmentDlq;sendNotificationForTrackingStage;sendNotificationForTrackingStageDlq;sendNotificationForEscrowReleaseToBuyer;sendNotificationForEscrowReleaseToBuyerDlq;sendNotificationForEscrowReleaseToSeller;sendNotificationForEscrowReleaseToSellerDlq;sendNotificationForDriverWalletCredit;sendNotificationForDriverWalletCreditDlq;sendNotificationToBuyerForDeliveryFeeDebit;sendNotificationToBuyerForDeliveryFeeDebitDlq
+    stream:
+      kafka:
+        binder:
+          brokers:
+            - localhost:9092
+          producer-properties:
+            retries: 3
+            retry.backoff.ms: 1000
+            acks: all
+            enable.idempotence: true
+            max.in.flight.requests.per.connection: 5
+            delivery.timeout.ms: 30000
+            request.timeout.ms: 10000
+        bindings:
+          upsertDeviceInformation-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: device-information-dlq-topic
+          sendNotificationToBuyerForEmptyDriverSearchResult-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: buyer-empty-driver-search-result-dlq-topic
+          sendNotificationToSellerForEmptyDriverSearchResult-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: seller-empty-driver-search-result-dlq-topic
+          sendOrderDeliveryNotificationToDriver-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: order-delivery-notification-dlq-topic
+          sendNotificationToBuyerForDriverAssignment-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: buyer-driver-assignment-dlq-topic
+          sendNotificationToSellerForDriverAssignment-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: seller-driver-assignment-dlq-topic
+          sendNotificationForTrackingStage-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: tracking-stage-notification-dlq-topic
+          sendNotificationForEscrowReleaseToBuyer-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: buyer-escrow-release-dlq-topic
+          sendNotificationForEscrowReleaseToSeller-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: seller-escrow-release-dlq-topic
+          sendNotificationForDriverWalletCredit-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: driver-wallet-credit-dlq-topic
+          sendNotificationToBuyerForDeliveryFeeDebit-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: buyer-delivery-fee-debit-dlq-topic
+      bindings:
+        upsertDeviceInformation-in-0:
+          destination: device-info-upsert
+          group: ${spring.application.name}
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendNotificationToBuyerForEmptyDriverSearchResult-in-0:
+          destination: notify-empty-driver-search-result
+          group: ${spring.application.name}--buyer-empty-driver-search-result
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendNotificationToSellerForEmptyDriverSearchResult-in-0:
+          destination: notify-empty-driver-search-result
+          group: ${spring.application.name}--seller-empty-driver-search-result
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendOrderDeliveryNotificationToDriver-in-0:
+          destination: order-delivery-notification
+          group: ${spring.application.name}
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendNotificationToBuyerForDriverAssignment-in-0:
+          destination: notification-order-delivery-accepted
+          group: ${spring.application.name}--buyer-driver-assignment
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendNotificationToSellerForDriverAssignment-in-0:
+          destination: notification-order-delivery-accepted
+          group: ${spring.application.name}--seller-driver-assignment
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendNotificationForTrackingStage-in-0:
+          destination: tracking-stage-notification
+          group: ${spring.application.name}--order-tracking-stage-update
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendNotificationForEscrowReleaseToBuyer-in-0:
+          destination: escrow-release-completed
+          group: ${spring.application.name}--buyer-escrow-release
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendNotificationForEscrowReleaseToSeller-in-0:
+          destination: escrow-release-completed
+          group: ${spring.application.name}--seller-escrow-release
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendNotificationForDriverWalletCredit-in-0:
+          destination: driver-wallet-credited
+          group: ${spring.application.name}--driver-wallet-credit
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+        sendNotificationToBuyerForDeliveryFeeDebit-in-0:
+          destination: driver-wallet-credited
+          group: ${spring.application.name}--buyer-delivery-fee-debit
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-multiplier: 2.0
+            back-off-max-interval: 10000
+
+        upsertDeviceInformationDlq-in-0:
+          destination: device-information-dlq-topic
+          group: ${spring.application.name}-device-information-dlq
+        sendNotificationToBuyerForEmptyDriverSearchResultDlq-in-0:
+          destination: buyer-empty-driver-search-result-dlq-topic
+          group: ${spring.application.name}-buyer-empty-driver-search-result-dlq
+        sendNotificationToSellerForEmptyDriverSearchResultDlq-in-0:
+          destination: seller-empty-driver-search-result-dlq-topic
+          group: ${spring.application.name}-seller-empty-driver-search-result-dlq
+        sendOrderDeliveryNotificationToDriverDlq-in-0:
+          destination: order-delivery-notification-dlq-topic
+          group: ${spring.application.name}-order-delivery-notification-dlq
+        sendNotificationToBuyerForDriverAssignmentDlq-in-0:
+          destination: buyer-driver-assignment-dlq-topic
+          group: ${spring.application.name}-buyer-driver-assignment-dlq
+        sendNotificationToSellerForDriverAssignmentDlq-in-0:
+          destination: seller-driver-assignment-dlq-topic
+          group: ${spring.application.name}-seller-driver-assignment-dlq
+        sendNotificationForTrackingStageDlq-in-0:
+          destination: tracking-stage-notification-dlq-topic
+          group: ${spring.application.name}-tracking-stage-notification-dlq
+        sendNotificationForEscrowReleaseToBuyerDlq-in-0:
+          destination: buyer-escrow-release-dlq-topic
+          group: ${spring.application.name}-buyer-escrow-release-dlq
+        sendNotificationForEscrowReleaseToSellerDlq-in-0:
+          destination: seller-escrow-release-dlq-topic
+          group: ${spring.application.name}-seller-escrow-release-dlq
+        sendNotificationForDriverWalletCreditDlq-in-0:
+          destination: driver-wallet-credit-dlq-topic
+          group: ${spring.application.name}-driver-wallet-credit-dlq
+        sendNotificationToBuyerForDeliveryFeeDebitDlq-in-0:
+          destination: buyer-delivery-fee-debit-dlq-topic
+          group: ${spring.application.name}-buyer-delivery-fee-debit-dlq
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetchRegistry: true
+    registerWithEureka: true
+    serviceUrl:
+      defaultZone: http://localhost:8082/eureka/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+  health:
+    outbox:
+      enabled: true
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+redis:
+  pool:
+    host: localhost
+    port: 6379
+    max-active: 20
+    max-idle: 10
+    min-idle: 5
+    max-wait: 10000ms
+
+logging:
+  level:
+    root: INFO
+    com.samjay: TRACE

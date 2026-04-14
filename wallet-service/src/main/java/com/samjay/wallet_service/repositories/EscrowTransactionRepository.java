@@ -4,6 +4,7 @@ import com.samjay.wallet_service.entities.EscrowTransaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @SuppressWarnings("NullableProblems")
@@ -11,4 +12,6 @@ import java.util.UUID;
 public interface EscrowTransactionRepository extends JpaRepository<EscrowTransaction, UUID> {
 
     boolean existsByOrderId(UUID orderId);
+
+    Optional<EscrowTransaction> findByOrderId(UUID orderId);
 }

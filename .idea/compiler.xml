@@ -9,7 +9,18 @@
         <outputRelativeToContentRoot value="true" />
         <module name="eureka-server" />
       </profile>
-      <profile name="Annotation profile for driver-service" enabled="true">
+      <profile name="Annotation profile for order-service" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
+        </processorPath>
+        <module name="customer-service" />
+        <module name="order-service" />
+      </profile>
+      <profile name="Annotation profile for notification-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -18,12 +29,11 @@
         </processorPath>
         <module name="authentication-service" />
         <module name="payment-service" />
-        <module name="customer-service" />
         <module name="email-service" />
         <module name="gateway-server" />
-        <module name="order-service" />
-        <module name="driver-service" />
+        <module name="notification-service" />
         <module name="wallet-service" />
+        <module name="driver-service" />
       </profile>
     </annotationProcessing>
   </component>
@@ -35,6 +45,7 @@
       <module name="email-service" options="-parameters" />
       <module name="eureka-server" options="-parameters" />
       <module name="gateway-server" options="-parameters" />
+      <module name="notification-service" options="-parameters" />
       <module name="order-service" options="-parameters" />
       <module name="payment-service" options="-parameters" />
       <module name="wallet-service" options="-parameters" />

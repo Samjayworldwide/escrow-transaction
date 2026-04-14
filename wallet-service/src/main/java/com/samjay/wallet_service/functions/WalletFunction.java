@@ -1,7 +1,10 @@
 package com.samjay.wallet_service.functions;
 
+import com.samjay.wallet_service.dtos.events.DeliveryCompletedEventDto;
+import com.samjay.wallet_service.dtos.events.OrderSettlementEventDto;
 import com.samjay.wallet_service.dtos.events.PaymentCompletionEventDto;
 import com.samjay.wallet_service.dtos.events.UserRegisteredEventDto;
+import com.samjay.wallet_service.services.interfaces.EscrowTransactionService;
 import com.samjay.wallet_service.services.interfaces.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +19,8 @@ import java.util.function.Consumer;
 public class WalletFunction {
 
     private final WalletService walletService;
+
+    private final EscrowTransactionService escrowTransactionService;
 
     @Bean
     public Consumer<UserRegisteredEventDto> createUserWallet() {
@@ -51,6 +56,42 @@ public class WalletFunction {
             } catch (Exception ex) {
 
                 log.error("Error processing payment completion event for order ID: {}", paymentCompletionEventDto.orderId(), ex);
+
+                throw ex;
+            }
+        };
+    }
+
+    @Bean
+    public Consumer<OrderSettlementEventDto> releasePaymentOnOrderSettlement() {
+
+        return orderSettlementEventDto -> {
+
+            try {
+
+                escrowTransactionService.releaseEscrow(orderSettlementEventDto);
+
+            } catch (Exception ex) {
+
+                log.error("Error processing order settlement event for order ID: {}", orderSettlementEventDto.orderId(), ex);
+
+                throw ex;
+            }
+        };
+    }
+
+    @Bean
+    public Consumer<DeliveryCompletedEventDto> creditDriverOnDeliveryCompletion() {
+
+        return deliveryCompletedEventDto -> {
+
+            try {
+
+                walletService.creditDriver(deliveryCompletedEventDto);
+
+            } catch (Exception ex) {
+
+                log.error("Error processing delivery completion event for driver user ID: {}", deliveryCompletedEventDto.driverUserId(), ex);
 
                 throw ex;
             }

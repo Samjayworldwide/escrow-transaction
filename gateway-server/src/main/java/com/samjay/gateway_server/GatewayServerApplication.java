@@ -45,6 +45,7 @@ public class GatewayServerApplication {
                         )
                         .uri("lb://AUTHENTICATION-SERVICE")
                 )
+
                 .route(p -> p
                         .path("/escrow/order-service/**")
                         .filters(f -> f.rewritePath("/escrow/order-service/(?<segment>.*)", "/${segment}")
@@ -101,6 +102,39 @@ public class GatewayServerApplication {
                         )
                         .uri("lb:ws://DRIVER-SERVICE")
                 )
+
+                .route(p -> p
+                        .path("/escrow/notification-service/**")
+                        .filters(f -> f.rewritePath("/escrow/notification-service/(?<segment>.*)", "/${segment}")
+                                .addResponseHeader("x-Response-Time", LocalDateTime.now().toString())
+                                .preserveHostHeader()
+                                .circuitBreaker(config -> config.setName("notificationServiceCircuitBreaker").setFallbackUri("forward:/contactSupport"))
+                                .retry(retryConfig -> retryConfig.setRetries(3).setMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE, HttpMethod.PUT)
+                                        .setBackoff(Duration.ofMillis(100), Duration.ofMillis(1000), 2, true)
+                                )
+                                .requestRateLimiter(config -> config.setRateLimiter(redisRateLimiter())
+                                        .setKeyResolver(userKeyResolver()))
+
+                        )
+                        .uri("lb://NOTIFICATION-SERVICE")
+                )
+
+                .route(p -> p
+                        .path("/escrow/wallet-service/**")
+                        .filters(f -> f.rewritePath("/escrow/wallet-service/(?<segment>.*)", "/${segment}")
+                                .addResponseHeader("x-Response-Time", LocalDateTime.now().toString())
+                                .preserveHostHeader()
+                                .circuitBreaker(config -> config.setName("walletServiceCircuitBreaker").setFallbackUri("forward:/contactSupport"))
+                                .retry(retryConfig -> retryConfig.setRetries(3).setMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE, HttpMethod.PUT)
+                                        .setBackoff(Duration.ofMillis(100), Duration.ofMillis(1000), 2, true)
+                                )
+                                .requestRateLimiter(config -> config.setRateLimiter(redisRateLimiter())
+                                        .setKeyResolver(userKeyResolver()))
+
+                        )
+                        .uri("lb://WALLET-SERVICE")
+                )
+
                 .build();
     }
 
