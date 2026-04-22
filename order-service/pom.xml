@@ -33,8 +33,13 @@
         <spring-grpc.version>1.0.2</spring-grpc.version>
         <protobuf-java.version>4.33.4</protobuf-java.version>
         <spring-cloud-azure.version>7.1.0</spring-cloud-azure.version>
+        <spring-ai.version>2.0.0-M2</spring-ai.version>
 	</properties>
 	<dependencies>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-pool2</artifactId>
@@ -196,6 +201,13 @@
                 <groupId>com.azure.spring</groupId>
                 <artifactId>spring-cloud-azure-dependencies</artifactId>
                 <version>${spring-cloud-azure.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

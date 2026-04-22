@@ -1,0 +1,70 @@
+server:
+  port: 9095
+
+spring:
+  config:
+    import: optional:/Users/mac/escrow_project/ai-service/.env[.properties]
+  application:
+    name: ai-service
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DATABASE_URL}
+    driverClassName: org.postgresql.Driver
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  ai:
+    mcp:
+      client:
+        enabled: false
+        name: spring-ai-mcp-client
+        version: 1.0.0
+        initialized: true
+        request-timeout: 60s
+        type: sync
+        root-change-notification: true
+        toolcallback:
+          enabled: true
+        annotation-scanner:
+          enabled: true
+        streamable-http:
+          connections:
+            order-service-mcp-server:
+              url: http://localhost:8087
+              endpoint: /mcp
+            wallet-service-mcp-server:
+              url: http://localhost:8084
+              endpoint: /mcp
+            driver-service-mcp-server:
+              url: http://localhost:8086
+              endpoint: /mcp
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.7
+          max-tokens: 300
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080
+          jwk-set-uri: http://localhost:8080/oauth2/jwks
+
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetchRegistry: true
+    registerWithEureka: true
+    serviceUrl:
+      defaultZone: http://localhost:8082/eureka/

@@ -20,6 +20,7 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/payment/callback").permitAll()
                         .requestMatchers("/api/payment/initialize").hasAuthority("CUSTOMER")
                         .anyRequest().authenticated()

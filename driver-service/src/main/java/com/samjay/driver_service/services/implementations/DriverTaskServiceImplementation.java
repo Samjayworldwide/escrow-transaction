@@ -7,10 +7,7 @@ import com.samjay.driver_service.dtos.events.OrderTrackingStageUpdateEventDto;
 import com.samjay.driver_service.dtos.events.TrackingStageNotificationEventDto;
 import com.samjay.driver_service.dtos.requests.DeliveryCodeVerificationRequest;
 import com.samjay.driver_service.dtos.requests.FetchDriverTaskRequest;
-import com.samjay.driver_service.dtos.responses.ApiResponse;
-import com.samjay.driver_service.dtos.responses.CursorPaginatedResponse;
-import com.samjay.driver_service.dtos.responses.DriverTaskResponse;
-import com.samjay.driver_service.dtos.responses.UserIdentifier;
+import com.samjay.driver_service.dtos.responses.*;
 import com.samjay.driver_service.entities.Driver;
 import com.samjay.driver_service.entities.DriverTask;
 import com.samjay.driver_service.enumerations.DriverStatus;
@@ -24,6 +21,8 @@ import com.samjay.driver_service.services.interfaces.DriverTaskService;
 import com.samjay.driver_service.services.interfaces.OutboxEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springaicommunity.mcp.annotation.McpTool;
+import org.springaicommunity.mcp.annotation.McpToolParam;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -302,5 +301,24 @@ public class DriverTaskServiceImplementation implements DriverTaskService {
                 );
 
         return ApiResponse.success("Driver tasks fetched successfully", paginatedResponse);
+    }
+
+    @McpTool(name = "fetch-driver-details", description = "Fetch the details of the driver assigned to a specific order using the order reference number.")
+    @Override
+    public ApiResponse<DriverDetailsResponse> fetchDetailsOfDriverAssignedToOrder(@McpToolParam(description = "This is the reference number that was assigned when order was successfully created") String orderReferenceNumber) {
+
+        Optional<DriverTask> optionalDriverTask = driverTaskRepository.findByOrderReferenceNumberWithDriver(orderReferenceNumber);
+
+        if (optionalDriverTask.isEmpty())
+            return ApiResponse.error("No driver task found for the given order reference number.");
+
+        DriverTask driverTask = optionalDriverTask.get();
+
+        Driver driver = driverTask.getDriver();
+
+        DriverDetailsResponse driverDetailsResponse = new DriverDetailsResponse(driver.getFirstname(), driver.getLastname(), driver.getPhoneNumber());
+
+        return ApiResponse.success("Driver details fetched successfully.", driverDetailsResponse);
+
     }
 }

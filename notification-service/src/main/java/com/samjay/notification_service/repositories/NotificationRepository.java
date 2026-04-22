@@ -19,9 +19,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     @Query(
             value = """
-                    SELECT n FROM Notification n
-                    WHERE n.user_id = :userId
-                    ORDER BY n.created_at DESC, n.id DESC
+                    SELECT *
+                    FROM notifications
+                    WHERE user_id = :userId
+                    ORDER BY created_at DESC, id DESC
                     """,
             nativeQuery = true
     )
@@ -29,10 +30,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     @Query(
             value = """
-                    SELECT n FROM Notification n
-                    WHERE n.user_id = :userId
-                    AND (n.created_at < :lastCreatedAt OR (n.created_at = :lastCreatedAt AND n.id < :id))
-                    ORDER BY n.created_at DESC, n.id DESC
+                    SELECT *
+                    FROM notifications
+                    WHERE user_id = :userId
+                    AND (created_at < :lastCreatedAt
+                         OR (created_at = :lastCreatedAt AND id < :id))
+                    ORDER BY created_at DESC, id DESC
                     """,
             nativeQuery = true
     )

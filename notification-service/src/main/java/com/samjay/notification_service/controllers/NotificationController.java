@@ -21,8 +21,8 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping("/fetch")
-    public ResponseEntity<ApiResponse<CursorPaginatedResponse<NotificationResponse>>> fetchNotifications(@RequestParam("cursor") String cursor,
-                                                                                                         @RequestParam("pageSize") Integer pageSize) {
+    public ResponseEntity<ApiResponse<CursorPaginatedResponse<NotificationResponse>>> fetchNotifications(@RequestParam(value = "cursor", required = false) String cursor,
+                                                                                                         @RequestParam(value = "pageSize", required = false, defaultValue = "10") Integer pageSize) {
         FetchNotificationRequest fetchNotificationRequest = new FetchNotificationRequest(cursor, pageSize);
 
         ApiResponse<CursorPaginatedResponse<NotificationResponse>> apiResponse = notificationService.fetchUserNotifications(fetchNotificationRequest);

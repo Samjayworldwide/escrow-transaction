@@ -30,6 +30,6 @@ public interface OrderService {
 
     ApiResponse<String> settleOrder(String clientRequestKey, UUID orderId);
 
-    ApiResponse<String> getOrderTrackingStage(UUID orderId);
+    ApiResponse<String> getOrderTrackingStage(String orderReferenceNumber);
 
 }

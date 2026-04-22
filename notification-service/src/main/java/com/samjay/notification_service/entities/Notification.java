@@ -41,7 +41,7 @@ public class Notification {
     private String idempotencyKey;
 
     @Column(nullable = false)
-    private boolean isRead;
+    private boolean read;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -53,7 +53,7 @@ public class Notification {
 
         this.createdAt = LocalDateTime.now();
 
-        this.isRead = false;
+        this.read = false;
 
     }
 

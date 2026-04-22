@@ -20,6 +20,7 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health", "/mcp", "/mcp/**").permitAll()
                         .requestMatchers("/api/order/create").hasAuthority("CUSTOMER")
                         .requestMatchers("/api/order/unapproved").hasAuthority("CUSTOMER")
                         .requestMatchers("/api/order/approve").hasAuthority("CUSTOMER")

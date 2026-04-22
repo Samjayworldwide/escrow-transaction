@@ -22,7 +22,10 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/driver/**").hasAuthority("DRIVER")
+                        .requestMatchers("/actuator/health", "/mcp", "/mcp/**").permitAll()
+                        .requestMatchers("/api/driver/complete-profile").hasAuthority("DRIVER")
+                        .requestMatchers("/api/driver/accept-delivery-request").hasAuthority("DRIVER")
+                        .requestMatchers("/api/driver/nearby-drivers").hasAuthority("CUSTOMER")
                         .requestMatchers("/api/driver/document/sas-urls").hasAuthority("DRIVER")
                         .requestMatchers("/api/driver/document/confirm-upload").hasAuthority("DRIVER")
                         .requestMatchers("/api/driver-tasks/**").hasAuthority("DRIVER")
