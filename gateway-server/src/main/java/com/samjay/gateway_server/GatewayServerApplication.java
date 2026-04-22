@@ -135,6 +135,31 @@ public class GatewayServerApplication {
                         .uri("lb://WALLET-SERVICE")
                 )
 
+                .route(p -> p
+                        .path("/escrow/ai-service/**")
+                        .filters(f -> f.rewritePath("/escrow/ai-service/(?<segment>.*)", "/${segment}")
+                                .addResponseHeader("x-Response-Time", LocalDateTime.now().toString())
+                                .preserveHostHeader()
+                                .circuitBreaker(config -> config.setName("aiServiceCircuitBreaker").setFallbackUri("forward:/contactSupport"))
+                                .retry(retryConfig -> retryConfig.setRetries(3).setMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE, HttpMethod.PUT)
+                                        .setBackoff(Duration.ofMillis(100), Duration.ofMillis(1000), 2, true)
+                                )
+                                .requestRateLimiter(config -> config.setRateLimiter(redisRateLimiter())
+                                        .setKeyResolver(userKeyResolver()))
+
+                        )
+                        .uri("lb://AI-SERVICE")
+                )
+
+                .route(p -> p
+                        .path("/escrow/ai-service/ws/**")
+                        .filters(f -> f.rewritePath("/escrow/ai-service/ws/(?<segment>.*)", "/ws/${segment}")
+                                .addResponseHeader("x-Response-Time", LocalDateTime.now().toString())
+                                .preserveHostHeader()
+                        )
+                        .uri("lb:ws://AI-SERVICE")
+                )
+
                 .build();
     }
 

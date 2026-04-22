@@ -17,6 +17,7 @@ import com.samjay.wallet_service.services.interfaces.*;
 import com.samjay.wallet_service.utility.AppExtensions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springaicommunity.mcp.annotation.McpTool;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -339,10 +340,15 @@ public class WalletServiceImplementation implements WalletService {
         }
     }
 
+    @McpTool(name = "Check-wallet-balance", description = "This tool allows you to check the user's current wallet available balance.")
     @Override
     public ApiResponse<BigDecimal> getWalletBalance() {
 
+        log.info("Fetching wallet balance for the current user.");
+
         UserIdentifier userIdentifier = authenticatedUserProvider.getCurrentLoggedInUser();
+
+        log.info("Current logged in user ID in wallet service: {}", userIdentifier.userId());
 
         Optional<Wallet> optionalWallet = walletRepository.findByUserId(UUID.fromString(userIdentifier.userId()));
 

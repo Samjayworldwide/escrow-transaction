@@ -9,6 +9,28 @@ spring:
   threads:
     virtual:
       enabled: true
+  ai:
+    mcp:
+      server:
+        protocol: stateless
+        type: sync
+        annotation-scanner:
+          enabled: true
+        name: order-service-mcp-server
+        version: 1.0.0
+        capabilities:
+          tool: true
+          resource: true
+          prompt: true
+        enabled: true
+        resource-change-notification: true
+        prompt-change-notification: true
+        tool-change-notification: true
+        request-timeout: 60s
+        streamable-http:
+          mcp-endpoint: /mcp
+          disallow-delete: true
+        base-url: http://localhost:8087
   grpc:
     client:
       channels:

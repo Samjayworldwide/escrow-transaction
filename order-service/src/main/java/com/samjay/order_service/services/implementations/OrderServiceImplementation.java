@@ -19,6 +19,8 @@ import com.samjay.order_service.services.interfaces.*;
 import com.samjay.order_service.utility.AppExtensions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springaicommunity.mcp.annotation.McpTool;
+import org.springaicommunity.mcp.annotation.McpToolParam;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -552,13 +554,14 @@ public class OrderServiceImplementation implements OrderService {
 
     }
 
+    @McpTool(name = MCP_TOOL_ORDER_TRACKING_STAGE_NAME, description = MCP_TOOL_ORDER_TRACKING_STAGE_DESCRIPTION)
     @Override
-    public ApiResponse<String> getOrderTrackingStage(UUID orderId) {
+    public ApiResponse<String> getOrderTrackingStage(@McpToolParam(description = MCP_TOOL_ORDER_TRACKING_STAGE_PARAM_DESCRIPTION) String orderReferenceNumber) {
 
-        Optional<Order> optionalOrder = orderRepository.findById(orderId);
+        Optional<Order> optionalOrder = orderRepository.findByOrderReferenceNumber(orderReferenceNumber);
 
         if (optionalOrder.isEmpty())
-            return ApiResponse.error("Order not found with the provided ID.");
+            return ApiResponse.error("Order not found with the provided reference number.");
 
         Order order = optionalOrder.get();
 

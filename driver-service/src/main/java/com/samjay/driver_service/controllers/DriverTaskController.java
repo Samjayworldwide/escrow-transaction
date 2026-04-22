@@ -37,7 +37,7 @@ public class DriverTaskController {
 
     @GetMapping("/get-tasks")
     public ResponseEntity<ApiResponse<CursorPaginatedResponse<DriverTaskResponse>>> fetchDriverTasks(@RequestParam(value = "cursor", required = false) String cursor,
-                                                                                                     @RequestParam(value = "pageSize", required = false) Integer pageSize) {
+                                                                                                     @RequestParam(value = "pageSize", required = false, defaultValue = "10") Integer pageSize) {
 
         FetchDriverTaskRequest fetchDriverTaskRequest = new FetchDriverTaskRequest(cursor, pageSize);
 

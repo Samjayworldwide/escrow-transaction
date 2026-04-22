@@ -401,8 +401,8 @@ public class DriverServiceImplementation implements DriverService {
             );
 
             SearchDriverH3Response searchDriverH3Response = h3DriverMatchingService.findNearestDrivers(
-                    driverSearchEventDto.sellerLatitude(),
-                    driverSearchEventDto.sellerLongitude()
+                    6.5927,
+                    3.3478
             );
 
             List<DriverLocation> driverLocations = searchDriverH3Response.getDrivers();

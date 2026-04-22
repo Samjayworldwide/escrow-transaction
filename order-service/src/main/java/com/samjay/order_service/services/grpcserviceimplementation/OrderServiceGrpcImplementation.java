@@ -3,6 +3,8 @@ package com.samjay.order_service.services.grpcserviceimplementation;
 import com.samjay.*;
 import com.samjay.FetchOrderDetailsRequest;
 import com.samjay.FetchOrderDetailsResponse;
+import com.samjay.OrderDetailsForDriverSearchRequest;
+import com.samjay.OrderDetailsForDriverSearchResponse;
 import com.samjay.OrderDetailsRequest;
 import com.samjay.OrderDetailsResponse;
 import com.samjay.OrderServiceGrpc;
@@ -208,6 +210,71 @@ public class OrderServiceGrpcImplementation extends OrderServiceGrpc.OrderServic
 
             responseObserver.onError(io.grpc.Status.INTERNAL
                     .withDescription("Internal error while getting order tracking stage")
+                    .withCause(ex)
+                    .asRuntimeException()
+            );
+        }
+    }
+
+    @Override
+    public void getOrderDetailsForDriverSearch(OrderDetailsForDriverSearchRequest request, StreamObserver<OrderDetailsForDriverSearchResponse> responseObserver) {
+
+        try {
+
+            log.info("Received request to fetch order details for driver search for order ID: {}", request.getOrderId());
+
+            OrderDetailsForDriverSearchResponse response;
+
+            Optional<Order> optionalOrder = orderRepository.findByIdWithDetails(UUID.fromString(request.getOrderId()));
+
+            if (optionalOrder.isEmpty()) {
+
+                response = OrderDetailsForDriverSearchResponse
+                        .newBuilder()
+                        .setIsFound(false)
+                        .setPickupLatitude(0.0)
+                        .setPickupLongitude(0.0)
+                        .setDeliveryFee(0.0)
+                        .setBuyerUserId("")
+                        .setSellerUserId("")
+                        .setPickupAddress("")
+                        .setDropOffAddress("")
+                        .setOrderReferenceNumber("")
+                        .build();
+
+                responseObserver.onNext(response);
+
+                responseObserver.onCompleted();
+
+                return;
+
+            }
+
+            Order order = optionalOrder.get();
+
+            response = OrderDetailsForDriverSearchResponse
+                    .newBuilder()
+                    .setIsFound(true)
+                    .setPickupLatitude(order.getDeliveryInformation().getPickupAddressLatitude())
+                    .setPickupLongitude(order.getDeliveryInformation().getPickupAddressLongitude())
+                    .setBuyerUserId(order.getParticipantInformation().getBuyerUserId())
+                    .setSellerUserId(order.getParticipantInformation().getSellerUserId())
+                    .setPickupAddress(order.getParticipantInformation().getPickupAddress())
+                    .setDropOffAddress(order.getParticipantInformation().getDropOffAddress())
+                    .setDeliveryFee(order.getDeliveryInformation().getDeliveryFee().doubleValue())
+                    .setOrderReferenceNumber(order.getOrderReferenceNumber())
+                    .build();
+
+            responseObserver.onNext(response);
+
+            responseObserver.onCompleted();
+
+        } catch (Exception ex) {
+
+            log.error("Error while logging request details: {}", ex.getMessage());
+
+            responseObserver.onError(io.grpc.Status.INTERNAL
+                    .withDescription("Internal error while getting order details for driver search")
                     .withCause(ex)
                     .asRuntimeException()
             );

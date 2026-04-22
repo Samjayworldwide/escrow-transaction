@@ -4,6 +4,7 @@ import com.samjay.driver_service.dtos.requests.DeliveryCodeVerificationRequest;
 import com.samjay.driver_service.dtos.requests.FetchDriverTaskRequest;
 import com.samjay.driver_service.dtos.responses.ApiResponse;
 import com.samjay.driver_service.dtos.responses.CursorPaginatedResponse;
+import com.samjay.driver_service.dtos.responses.DriverDetailsResponse;
 import com.samjay.driver_service.dtos.responses.DriverTaskResponse;
 
 import java.math.BigDecimal;
@@ -27,5 +28,7 @@ public interface DriverTaskService {
     ApiResponse<String> verifyDeliveryCode(String clientRequestKey, DeliveryCodeVerificationRequest deliveryCodeVerificationRequest);
 
     ApiResponse<CursorPaginatedResponse<DriverTaskResponse>> fetchDriverTasks(FetchDriverTaskRequest fetchDriverTaskRequest);
+
+    ApiResponse<DriverDetailsResponse> fetchDetailsOfDriverAssignedToOrder(String orderReferenceNumber);
 
 }

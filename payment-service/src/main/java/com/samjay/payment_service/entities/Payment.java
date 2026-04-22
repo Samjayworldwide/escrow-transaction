@@ -29,7 +29,6 @@ public class Payment {
     @Column(nullable = false)
     private BigDecimal amount;
 
-    @Column(nullable = false)
     private BigDecimal deliveryFee;
 
     @Column(nullable = false)

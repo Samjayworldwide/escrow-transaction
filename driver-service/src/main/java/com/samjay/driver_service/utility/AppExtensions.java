@@ -1,12 +1,12 @@
 package com.samjay.driver_service.utility;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samjay.driver_service.entities.Driver;
 import com.samjay.driver_service.entities.DriverDocument;
 import com.samjay.driver_service.enumerations.DocumentType;
 import com.samjay.driver_service.models.CursorPayload;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
+import tools.jackson.databind.ObjectMapper;
 
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
@@ -75,7 +75,7 @@ public class AppExtensions {
 
     public static final String CLIENT_REQUEST_KEY_HEADER = "X-Client-Request-Key";
 
-    private static final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final List<String> TRACKED_FIELDS = Arrays.asList(
             "phoneNumber",

@@ -37,6 +37,16 @@ public class AppExtensions {
 
     public static final String ORDER_SETTLEMENT_KAFKA_BINDING = "orderSettlement-out-0";
 
+    public static final String MCP_TOOL_ORDER_TRACKING_STAGE_NAME = "get-order-tracking-stage";
+
+    public static final String MCP_TOOL_ORDER_TRACKING_STAGE_DESCRIPTION = "Tool to to track an order by providing the order reference number, " +
+            "it returns the current tracking stage of the order which can be one of the following: " +
+            "AT_SELLER_ADDRESS(This means the order items are still with the seller and hasn't been picked up by the buyer)," +
+            "PICKUP_FROM_SELLER(This means that the order items is in transit with the assigned driver)," +
+            "DELIVERED_TO_BUYER_ADDRESS(This means the order items has been delivered to the buyer by the assigned driver).";
+
+    public static final String MCP_TOOL_ORDER_TRACKING_STAGE_PARAM_DESCRIPTION = "This is the order reference number used to track the order";
+
     public static <T> String serialize(T object) {
 
         try {

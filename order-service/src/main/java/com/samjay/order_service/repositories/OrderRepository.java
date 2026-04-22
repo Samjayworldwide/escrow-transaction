@@ -22,6 +22,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     List<Order> findByOrderStatusAndReviewerUserId(OrderStatus orderStatus, UUID reviewerUserId);
 
+    Optional<Order> findByOrderReferenceNumber(String orderReferenceNumber);
+
     /*
     We are using a custom query with JOIN FETCH to eagerly load the associated participantInformation and itemDetails when fetching an Order by its ID.
     This approach is done because we set the fetch type to LAZY for these associations in the Order entity,

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @SuppressWarnings("NullableProblems")
@@ -20,6 +21,13 @@ import java.util.UUID;
 public interface DriverTaskRepository extends JpaRepository<DriverTask, UUID> {
 
     boolean existsByOrderIdAndDriverTaskStatus(UUID orderId, DriverTaskStatus driverTaskStatus);
+
+    @Query("""
+            SELECT dt FROM DriverTask dt
+            JOIN FETCH dt.driver
+            WHERE dt.orderReferenceNumber = :orderReferenceNumber
+            """)
+    Optional<DriverTask> findByOrderReferenceNumberWithDriver(String orderReferenceNumber);
 
     @Modifying
     @Transactional
